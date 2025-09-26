@@ -19,6 +19,13 @@ async function getAllCifraRepository() {
 async function getCifraByIdRepository(id) {
   return Cifra.findById(id);
 }
+async function searchCifraRepository(nome) {
+  return Cifra.find({
+    nome: { $regex: nome.nome, $options: "i" }, // case insensitive
+  })
+    .collation({ locale: "pt", strength: 1 }) // ignora acentos
+    .sort({ nome: 1 });
+}
 
 export default {
   createCifraRepository,
@@ -26,4 +33,5 @@ export default {
   getCifraByIdRepository,
   updateCifraRepository,
   deleteCifraRepository,
+  searchCifraRepository,
 };

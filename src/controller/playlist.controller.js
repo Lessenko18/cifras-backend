@@ -9,6 +9,16 @@ async function createPlaylistController(req, res) {
   }
 }
 
+async function getPlaylistViewController(req, res) {
+  const id = req.params.id;
+  try {
+    const playlist = await playlistService.getPlaylistViewService(id);
+    return res.status(200).send(playlist);
+  } catch (error) {
+    return res.status(400).send(error.message);
+  }
+}
+
 async function updatePlaylistController(req, res) {
   const id = req.params.id;
   try {
@@ -53,7 +63,5 @@ export default {
   getPlaylistByIdController,
   updatePlaylistController,
   deletePlaylistController,
+  getPlaylistViewController,
 };
-
-
-

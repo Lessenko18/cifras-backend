@@ -39,6 +39,12 @@ async function getCifraById(id) {
 
   return cifra;
 }
+async function searchCifraService(nome) {
+  const cifras = await cifraRepositories.searchCifraRepository(nome);
+  console.log(cifras);
+  if (cifras.length == 0) return { message: "Nenhuma Cifra cadastrada" };
+  return cifras;
+}
 
 export default {
   createCifraService,
@@ -46,4 +52,5 @@ export default {
   getCifraById,
   updateCifraService,
   deleteCifraService,
+  searchCifraService,
 };

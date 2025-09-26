@@ -14,5 +14,7 @@ playlistRouter.delete(
 );
 playlistRouter.get("/:id", playlistController.getPlaylistByIdController);
 playlistRouter.get("/", playlistController.getAllPlaylistController);
+playlistRouter.get("/:id/view", playlistController.getPlaylistViewController);
+
 
 export default playlistRouter;

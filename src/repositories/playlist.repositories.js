@@ -3,6 +3,11 @@ import Playlist from "../models/Playlist.js";
 async function createPlaylistRepository(data) {
   return Playlist.create(data);
 }
+async function getPlaylistViewRepository(id) {
+  return Playlist.findById(id)
+    .populate("cifras", "nome observacao")
+    .select("nome cifras");
+}
 
 async function updatePlaylistRepository(id, data) {
   return Playlist.findOneAndUpdate({ _id: id }, data, { new: true });
@@ -34,4 +39,5 @@ export default {
   updatePlaylistRepository,
   deletePlaylistRepository,
   removeCifraFromAllPlaylists,
+  getPlaylistViewRepository,
 };

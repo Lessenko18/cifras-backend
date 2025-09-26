@@ -4,7 +4,18 @@ async function createPlaylistService(data) {
   const playlist = await playlistRepositories.createPlaylistRepository(data);
   return playlist;
 }
-
+async function getPlaylistViewService(id) {
+  const playlist = await playlistRepositories.getPlaylistViewRepository(id);
+  if (!playlist) throw new Error("Playlist não encontrada");
+  return {
+    nome: playlist.nome,
+    musicas: (playlist.cifras || []).map((c) => ({
+      id: c._id,
+      nome: c.nome,
+      descricao: c.observacao || "",
+    })),
+  };
+}
 async function updatePlaylistService(id, data) {
   const playlist = await playlistRepositories.getPlaylistByIdRepository(id);
   if (!playlist) throw new Error("Playlist não encontrada");
@@ -42,4 +53,5 @@ export default {
   getPlaylistById,
   updatePlaylistService,
   deletePlaylistService,
+  getPlaylistViewService,
 };

@@ -6,7 +6,7 @@ async function createPlaylistRepository(data) {
 async function getPlaylistViewRepository(id) {
   return Playlist.findById(id)
     .populate("cifras", "nome observacao")
-    .select("nome cifras");
+    .select("nome cifras"); 
 }
 
 async function updatePlaylistRepository(id, data) {

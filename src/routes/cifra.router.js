@@ -9,5 +9,6 @@ cifraRouter.delete("/delete/:id", cifraController.deleteCifraController);
 cifraRouter.get("/search", cifraController.searchCifraController);
 cifraRouter.get("/:id", cifraController.getCifraByIdController);
 cifraRouter.get("/", cifraController.getAllCifraController);
+cifraRouter.get("/categoria/:categoria", cifraController.getCifraByCategoriaController);
 
 export default cifraRouter;

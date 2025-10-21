@@ -55,6 +55,14 @@ async function searchCifraController(req, res) {
     return res.status(400).send(error.message);
   }
 }
+async function getCifraByCategoriaController(req, res) {
+  try {
+    const cifra = await cifraService.getCifraByCategoria(req.params.categoria);
+    return res.status(200).send(cifra);
+  } catch (error) {
+    return res.status(400).send(error.message);
+  }
+}
 
 export default {
   createCifraController,
@@ -63,4 +71,5 @@ export default {
   updateCifraController,
   deleteCifraController,
   searchCifraController,
+  getCifraByCategoriaController,
 };

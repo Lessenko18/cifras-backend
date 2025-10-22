@@ -45,7 +45,12 @@ async function searchCifraService(nome) {
   if (cifras.length == 0) return { message: "Nenhuma Cifra cadastrada" };
   return cifras;
 }
+async function getCifraByCategoriaService(categoria) {
+  const cifras = await cifraRepositories.getCifraByCategoriaRepository(categoria);
+  if (!cifras || cifras.length == 0) return new Error("Nenhuma Cifra cadastrada");
 
+  return cifras;
+}
 export default {
   createCifraService,
   getAllCifraService,
@@ -53,4 +58,5 @@ export default {
   updateCifraService,
   deleteCifraService,
   searchCifraService,
+  getCifraByCategoriaService,
 };

@@ -26,6 +26,13 @@ async function searchCifraRepository(nome) {
     .collation({ locale: "pt", strength: 1 }) // ignora acentos
     .sort({ nome: 1 });
 }
+async function getCifraByCategoriaRepository(categoria) {
+  try {
+    return await Cifra.find({ categoria: categoria }).sort({ nome: 1 });
+  } catch (error) {
+    throw new Error("Erro ao buscar cifras por categoria");
+  }
+}
 
 export default {
   createCifraRepository,
@@ -34,4 +41,5 @@ export default {
   updateCifraRepository,
   deleteCifraRepository,
   searchCifraRepository,
+  getCifraByCategoriaRepository,
 };

@@ -13,7 +13,7 @@ async function deleteCifraRepository(id) {
 }
 
 async function getAllCifraRepository() {
-  return Cifra.find().sort({ _id: -1 });
+  return Cifra.find().select("_id nome").sort({ _id: -1 });
 }
 
 async function getCifraByIdRepository(id) {
@@ -22,13 +22,13 @@ async function getCifraByIdRepository(id) {
 async function searchCifraRepository(nome) {
   return Cifra.find({
     nome: { $regex: nome.nome, $options: "i" }, // case insensitive
-  })
+  }).select("_id nome")
     .collation({ locale: "pt", strength: 1 }) // ignora acentos
     .sort({ nome: 1 });
 }
 async function getCifraByCategoriaRepository(categoria) {
   try {
-    return await Cifra.find({ categoria: categoria }).sort({ nome: 1 });
+    return await Cifra.find({ categoria: categoria }).select("_id nome").sort({ nome: 1 });
   } catch (error) {
     throw new Error("Erro ao buscar cifras por categoria");
   }

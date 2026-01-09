@@ -4,6 +4,8 @@ const CategoriaSchema = new mongoose.Schema({
   nome: {
     type: String,
     required: true,
+    unique: true,
+    trim: true,
   },
 });
 

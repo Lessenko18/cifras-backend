@@ -20,10 +20,15 @@ async function getUserByIdRepository(id) {
   return User.findById(id);
 }
 
+const findUserByEmail = async (email) => {
+  return User.findOne({ email });
+};
+
 export default {
   createUserRepository,
   getAllUserRepository,
   getUserByIdRepository,
   updateUserRepository,
   deleteUserRepository,
+  findUserByEmail, 
 };

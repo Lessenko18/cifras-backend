@@ -26,7 +26,7 @@ async function deleteCategoriaController(req, res) {
   const id = req.params.id;
   try {
     await categoriaService.deleteCategoriaService(id);
-    return res.status(200).send({ message: "Usuário deletado com sucesso" });
+    return res.status(200).send({ message: "Categoria deletada com sucesso" });
   } catch (error) {
     return res.status(400).send(error.message);
   }
@@ -42,7 +42,7 @@ async function getAllCategoriaController(req, res) {
 }
 
 async function searchCategoriaController(req, res) {
-  const nome = req.query;
+  const { nome } = req.query;
   try {
     const categorias = await categoriaService.searchCategoriaService(nome);
     return res.status(200).send(categorias);

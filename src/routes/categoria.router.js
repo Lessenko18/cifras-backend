@@ -1,9 +1,17 @@
 import { Router } from "express";
+import { authMiddleware, denyNonAdm } from "../middlewares/auth.middleware.js";
 import categoriaController from "../controller/categoria.controller.js";
 
 const categoriaRouter = Router();
 
-categoriaRouter.post("/create", categoriaController.createCategoriaController);
+categoriaRouter.use(authMiddleware);
+
+categoriaRouter.post(
+  "/create",
+  denyNonAdm,
+  categoriaController.createCategoriaController
+);
+
 categoriaRouter.patch(
   "/update/:id",
   categoriaController.updateCategoriaController

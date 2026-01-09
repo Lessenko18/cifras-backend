@@ -2,10 +2,12 @@ import bcrypt from "bcrypt";
 import userRepositories from "../repositories/user.repositories.js";
 
 async function createUserService(data) {
-  if (!data.nome || !data.password || !data.level)
+  if (!data.nome || !data.password || !data.level || !data.email)
     throw new Error("Preencha todas as informações");
 
-  if (data.password) data.password = await bcrypt.hash(data.password, 10);
+  if (data.password) {
+    data.password = await bcrypt.hash(data.password, 10);
+  }
   const user = await userRepositories.createUserRepository(data);
   return user;
 }

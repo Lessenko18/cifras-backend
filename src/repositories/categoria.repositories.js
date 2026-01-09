@@ -18,9 +18,9 @@ async function getAllCategoriaRepository() {
 
 async function searchCategoriaRepository(nome) {
   return Categoria.find({
-    nome: { $regex: nome.nome, $options: "i" }, // case insensitive
+    nome: { $regex: nome.nome, $options: "i" }, 
   })
-    .collation({ locale: "pt", strength: 1 }) // ignora acentos
+    .collation({ locale: "pt", strength: 1 }) 
     .sort({ nome: 1 });
 }
 

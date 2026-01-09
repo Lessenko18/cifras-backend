@@ -7,6 +7,10 @@ const UserSchema = new mongoose.Schema({
   },
   email: {
     type: String,
+    required: true,
+    unique: true,
+    lowercase: true,
+    trim: true,
   },
   password: {
     type: String,
@@ -14,6 +18,7 @@ const UserSchema = new mongoose.Schema({
   },
   level: {
     type: String,
+    enum: ["USER", "ADM"],
     required: true,
   },
   avatar: {

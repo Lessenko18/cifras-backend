@@ -46,8 +46,11 @@ async function searchCifraService(nome) {
   return cifras;
 }
 async function getCifraByCategoriaService(categoria) {
-  const cifras = await cifraRepositories.getCifraByCategoriaRepository(categoria);
-  if (!cifras || cifras.length == 0) return new Error("Nenhuma Cifra cadastrada");
+  const cifras = await cifraRepositories.getCifraByCategoriaRepository(
+    categoria
+  );
+  if (!cifras || cifras.length === 0)
+    throw new Error("Nenhuma Cifra cadastrada");
 
   return cifras;
 }

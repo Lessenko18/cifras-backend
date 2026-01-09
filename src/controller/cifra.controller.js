@@ -47,7 +47,7 @@ async function getCifraByIdController(req, res) {
   }
 }
 async function searchCifraController(req, res) {
-  const nome = req.query;
+  const { nome } = req.query;
   try {
     const cifras = await cifraService.searchCifraService(nome);
     return res.status(200).send(cifras);

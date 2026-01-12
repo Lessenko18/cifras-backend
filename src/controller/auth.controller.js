@@ -26,3 +26,10 @@ export async function register(req, res) {
     res.status(400).json({ message: error.message });
   }
 }
+export async function me(req, res) {
+  try {
+    return res.status(200).json(req.user);
+  } catch (err) {
+    return res.status(500).json({ message: "Erro ao buscar usuário logado" });
+  }
+}

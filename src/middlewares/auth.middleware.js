@@ -24,16 +24,18 @@ export const authMiddleware = (req, res, next) => {
       return res.status(401).json({ message: "Token inválido ou expirado." });
     }
 
-    req.userId = decoded.id;
-    req.userEmail = decoded.email;
-    req.userLevel = decoded.level;
+    req.user = {
+      id: decoded.id,
+      email: decoded.email,
+      level: decoded.level,
+    };
 
     return next();
   });
 };
 
 export const denyNonAdm = (req, res, next) => {
-  if (req.userLevel !== "ADM") {
+  if (req.user.level !== "ADM") {
     return res.status(403).json({
       message: "Somente administradores podem realizar esta ação.",
     });

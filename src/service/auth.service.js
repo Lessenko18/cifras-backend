@@ -39,7 +39,6 @@ export async function login(email, password) {
     throw new Error("Senha inválida");
   }
 
-
   const token = jwt.sign(
     { id: user._id, email: user.email, level: user.level },
     process.env.JWT_SECRET,

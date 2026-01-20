@@ -17,10 +17,14 @@ async function getAllCategoriaRepository() {
 }
 
 async function searchCategoriaRepository(nome) {
+  if (!nome || nome.trim().length < 1) {
+    return [];
+  }
+
   return Categoria.find({
-    nome: { $regex: nome.nome, $options: "i" }, 
+    nome: { $regex: nome.trim(), $options: "i" },
   })
-    .collation({ locale: "pt", strength: 1 }) 
+    .collation({ locale: "pt", strength: 1 })
     .sort({ nome: 1 });
 }
 

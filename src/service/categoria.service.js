@@ -10,7 +10,7 @@ async function updateCategoriaService(id, data) {
   if (!categoria) throw new Error("Categoria não encontrada");
   const categoriaAt = await categoriaRepositories.updateCategoriaRepository(
     id,
-    data
+    data,
   );
   return categoriaAt;
 }
@@ -31,13 +31,15 @@ async function getAllCategoriaService() {
 }
 
 async function searchCategoriaService(nome) {
+  if (!nome || nome.trim().length < 1) {
+    return [];
+  }
+
   const categorias = await categoriaRepositories.searchCategoriaRepository(
-    nome
+    nome.trim(),
   );
-  console.log(categorias);
-  if (categorias.length == 0)
-    return { message: "Nenhuma Categoria cadastrada" };
-  return categorias;
+
+  return categorias; // sempre array
 }
 
 async function getCategoriaById(id) {

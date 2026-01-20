@@ -19,19 +19,21 @@ async function getAllCifraRepository() {
 async function getCifraByIdRepository(id) {
   return Cifra.findById(id);
 }
+
 async function searchCifraRepository(nome) {
+  if (!nome || typeof nome !== "string") {
+    return [];
+  }
+
   return Cifra.find({
-    nome: { $regex: nome.nome, $options: "i" }, // case insensitive
+    nome: { $regex: nome.trim(), $options: "i" },
   })
-    .collation({ locale: "pt", strength: 1 }) // ignora acentos
+    .collation({ locale: "pt", strength: 1 })
     .sort({ nome: 1 });
 }
+
 async function getCifraByCategoriaRepository(categoria) {
-  try {
-    return await Cifra.find({ categoria: categoria }).sort({ nome: 1 });
-  } catch (error) {
-    throw new Error("Erro ao buscar cifras por categoria");
-  }
+  return Cifra.find({ categoria }).sort({ nome: 1 });
 }
 
 export default {

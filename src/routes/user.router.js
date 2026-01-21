@@ -9,7 +9,11 @@ userRouter.use(authMiddleware);
 userRouter.post("/create", denyNonAdm, userController.createUserController);
 
 userRouter.patch("/update/:id", userController.updateUserController);
-userRouter.delete("/delete/:id", userController.deleteUserController);
+userRouter.delete(
+  "/delete/:id",
+  denyNonAdm,
+  userController.deleteUserController,
+);
 userRouter.get("/:id", userController.getUserByIdController);
 userRouter.get("/", userController.getAllUserController);
 

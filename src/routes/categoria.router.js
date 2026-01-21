@@ -9,16 +9,17 @@ categoriaRouter.use(authMiddleware);
 categoriaRouter.post(
   "/create",
   denyNonAdm,
-  categoriaController.createCategoriaController
+  categoriaController.createCategoriaController,
 );
 
 categoriaRouter.patch(
   "/update/:id",
-  categoriaController.updateCategoriaController
+  categoriaController.updateCategoriaController,
 );
 categoriaRouter.delete(
   "/delete/:id",
-  categoriaController.deleteCategoriaController
+  denyNonAdm,
+  categoriaController.deleteCategoriaController,
 );
 categoriaRouter.get("/search", categoriaController.searchCategoriaController);
 categoriaRouter.get("/:id", categoriaController.getCategoriaByIdController);

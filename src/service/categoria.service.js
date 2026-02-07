@@ -39,7 +39,7 @@ async function searchCategoriaService(nome) {
     nome.trim(),
   );
 
-  return categorias; // sempre array
+  return categorias; 
 }
 
 async function getCategoriaById(id) {

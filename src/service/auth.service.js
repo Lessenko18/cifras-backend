@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import userRepository from "../repositories/user.repositories.js";
 
-export async function register({ nome, email, password }) {
+export async function register({ name, email, password }) {
   const userExists = await userRepository.findUserByEmail(email);
 
   if (userExists) {
@@ -12,7 +12,7 @@ export async function register({ nome, email, password }) {
   const hashedPassword = await bcrypt.hash(password, 10);
 
   const user = await userRepository.createUserRepository({
-    nome,
+    name,
     email,
     password: hashedPassword,
     level: "USER",
@@ -20,7 +20,7 @@ export async function register({ nome, email, password }) {
 
   return {
     id: user._id,
-    nome: user.nome,
+    name: user.name,
     email: user.email,
     level: user.level,
   };
@@ -42,7 +42,7 @@ export async function login(email, password) {
   const token = jwt.sign(
     { id: user._id, email: user.email, level: user.level },
     process.env.JWT_SECRET,
-    { expiresIn: "8h" }
+    { expiresIn: "8h" },
   );
 
   return { token };

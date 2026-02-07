@@ -1,4 +1,5 @@
 import * as authService from "../service/auth.service.js";
+import userRepository from "../repositories/user.repositories.js";
 
 export async function login(req, res) {
   const { email, password } = req.body;
@@ -11,10 +12,10 @@ export async function login(req, res) {
 }
 
 export async function register(req, res) {
-  const { nome, email, password, level } = req.body;
+  const { name, email, password, level } = req.body;
   try {
     const newUser = await authService.register({
-      nome,
+      name,
       email,
       password,
       level,
@@ -28,8 +29,14 @@ export async function register(req, res) {
 }
 export async function me(req, res) {
   try {
-    return res.status(200).json(req.user);
+    const user = await userRepository.getUserByIdRepository(req.userId);
+    return res.status(200).json(user);
   } catch (err) {
     return res.status(500).json({ message: "Erro ao buscar usuário logado" });
   }
+}
+export function logout(req, res) {
+  return res.status(200).json({
+    message: "Logout realizado com sucesso",
+  });
 }

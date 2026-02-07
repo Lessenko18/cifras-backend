@@ -4,8 +4,7 @@ import cifraController from "../controller/cifra.controller.js";
 
 const cifraRouter = Router();
 
-cifraRouter.use(authMiddleware);
-
+// Rotas públicas (não requerem autenticação)
 cifraRouter.get("/search", cifraController.searchCifraController);
 cifraRouter.get(
   "/categoria/:categoria",
@@ -13,10 +12,21 @@ cifraRouter.get(
 );
 cifraRouter.get("/:id", cifraController.getCifraByIdController);
 cifraRouter.get("/", cifraController.getAllCifraController);
-cifraRouter.post("/create", cifraController.createCifraController);
-cifraRouter.patch("/update/:id", cifraController.updateCifraController);
+
+// Rotas protegidas (requerem autenticação)
+cifraRouter.post(
+  "/create",
+  authMiddleware,
+  cifraController.createCifraController,
+);
+cifraRouter.patch(
+  "/update/:id",
+  authMiddleware,
+  cifraController.updateCifraController,
+);
 cifraRouter.delete(
   "/delete/:id",
+  authMiddleware,
   denyNonAdm,
   cifraController.deleteCifraController,
 );

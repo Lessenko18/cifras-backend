@@ -14,7 +14,7 @@ async function createUserService(data) {
 
 async function updateUserService(id, data) {
   if (
-    !data.nome &&
+    !data.name &&
     !data.password &&
     !data.level &&
     !data.avatar &&
@@ -24,6 +24,12 @@ async function updateUserService(id, data) {
 
   const user = await userRepositories.getUserByIdRepository(id);
   if (!user) throw new Error("Usuário não encontrado");
+
+  // Se a senha foi enviada, fazer o hash antes de atualizar
+  if (data.password) {
+    data.password = await bcrypt.hash(data.password, 10);
+  }
+
   const userAt = await userRepositories.updateUserRepository(id, data);
   return userAt;
 }
@@ -49,10 +55,27 @@ async function getUserById(id) {
   return user;
 }
 
+// Método para atualizar o perfil do usuário
+async function updateUserProfile(userId, updatedData, profileImage) {
+  const user = await userRepositories.getUserByIdRepository(userId);
+  if (!user) throw new Error("Usuário não encontrado");
+
+  // Remove o campo password do updatedData para evitar sobrescrever a senha
+  const { password, ...dataWithoutPassword } = updatedData;
+
+  // Atualiza os dados do usuário (exceto a senha)
+  Object.assign(user, dataWithoutPassword);
+  if (profileImage) user.avatar = profileImage;
+
+  await user.save();
+  return user;
+}
+
 export default {
   createUserService,
   getAllUserService,
   getUserById,
   updateUserService,
   deleteUserService,
+  updateUserProfile,
 };

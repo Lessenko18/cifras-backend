@@ -4,14 +4,18 @@ async function createPlaylistRepository(data) {
   return Playlist.create(data);
 }
 async function getPlaylistViewRepository(id, userId, isAdmin = false) {
-  const filter = isAdmin ? { _id: id } : { _id: id, criador: userId };
+  const filter = isAdmin
+    ? { _id: id }
+    : { _id: id, $or: [{ criador: userId }, { sharedWith: userId }] };
   return Playlist.findOne(filter)
     .populate("cifras", "nome observacao")
     .select("nome cifras");
 }
 
 async function updatePlaylistRepository(id, data, userId, isAdmin = false) {
-  const filter = isAdmin ? { _id: id } : { _id: id, criador: userId };
+  const filter = isAdmin
+    ? { _id: id }
+    : { _id: id, $or: [{ criador: userId }, { sharedWith: userId }] };
   return Playlist.findOneAndUpdate(filter, data, { new: true });
 }
 
@@ -21,13 +25,38 @@ async function deletePlaylistRepository(id, userId, isAdmin = false) {
 }
 
 async function getAllPlaylistRepository(userId, isAdmin = false) {
-  const filter = isAdmin ? {} : { criador: userId };
+  const filter = isAdmin
+    ? {}
+    : { $or: [{ criador: userId }, { sharedWith: userId }] };
   return Playlist.find(filter).sort({ _id: -1 });
 }
 
 async function getPlaylistByIdRepository(id, userId, isAdmin = false) {
   const filter = isAdmin ? { _id: id } : { _id: id, criador: userId };
   return Playlist.findOne(filter);
+}
+
+async function getPlaylistByIdForReadRepository(id, userId, isAdmin = false) {
+  const filter = isAdmin
+    ? { _id: id }
+    : { _id: id, $or: [{ criador: userId }, { sharedWith: userId }] };
+  return Playlist.findOne(filter);
+}
+
+async function addUsersToSharedWithRepository(id, userIds) {
+  return Playlist.findByIdAndUpdate(
+    id,
+    { $addToSet: { sharedWith: { $each: userIds } } },
+    { new: true },
+  );
+}
+
+async function removeUsersFromSharedWithRepository(id, userIds) {
+  return Playlist.findByIdAndUpdate(
+    id,
+    { $pull: { sharedWith: { $in: userIds } } },
+    { new: true },
+  );
 }
 
 async function removeCifraFromAllPlaylists(cifraId) {
@@ -45,4 +74,7 @@ export default {
   deletePlaylistRepository,
   removeCifraFromAllPlaylists,
   getPlaylistViewRepository,
+  getPlaylistByIdForReadRepository,
+  addUsersToSharedWithRepository,
+  removeUsersFromSharedWithRepository,
 };

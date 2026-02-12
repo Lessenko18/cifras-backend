@@ -27,6 +27,18 @@ playlistRouter.post(
   playlistController.createPlaylistController,
 );
 
+playlistRouter.post(
+  "/:id/share",
+  authMiddleware,
+  playlistController.sharePlaylistController,
+);
+
+playlistRouter.delete(
+  "/:id/share",
+  authMiddleware,
+  playlistController.unsharePlaylistController,
+);
+
 playlistRouter.patch(
   "/update/:id",
   authMiddleware,
@@ -36,7 +48,6 @@ playlistRouter.patch(
 playlistRouter.delete(
   "/delete/:id",
   authMiddleware,
-  denyNonAdm,
   playlistController.deletePlaylistController,
 );
 

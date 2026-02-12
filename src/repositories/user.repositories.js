@@ -24,11 +24,25 @@ const findUserByEmail = async (email) => {
   return User.findOne({ email });
 };
 
+const findUsersByEmailList = async (emails) => {
+  return User.find({ email: { $in: emails } });
+};
+
+const searchUsersByEmail = async (query) => {
+  const regex = new RegExp(query, "i");
+  return User.find({ email: { $regex: regex } })
+    .select("email name")
+    .limit(10)
+    .sort({ email: 1 });
+};
+
 export default {
   createUserRepository,
   getAllUserRepository,
   getUserByIdRepository,
   updateUserRepository,
   deleteUserRepository,
-  findUserByEmail, 
+  findUserByEmail,
+  findUsersByEmailList,
+  searchUsersByEmail,
 };

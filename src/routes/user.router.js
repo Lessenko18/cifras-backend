@@ -17,6 +17,8 @@ userRouter.delete(
   userController.deleteUserController,
 );
 
+userRouter.get("/search", userController.searchUsersController);
+
 userRouter.get("/:id", userController.getUserByIdController);
 userRouter.get("/", userController.getAllUserController);
 

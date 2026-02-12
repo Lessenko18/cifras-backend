@@ -80,6 +80,34 @@ async function getPlaylistByIdController(req, res) {
   }
 }
 
+async function sharePlaylistController(req, res) {
+  try {
+    const result = await playlistService.sharePlaylistService(
+      req.params.id,
+      req.body.emails,
+      req.userId,
+      req.userLevel === "ADM",
+    );
+    return res.status(200).send(result);
+  } catch (error) {
+    return res.status(400).send(error.message);
+  }
+}
+
+async function unsharePlaylistController(req, res) {
+  try {
+    const result = await playlistService.unsharePlaylistService(
+      req.params.id,
+      req.body.emails,
+      req.userId,
+      req.userLevel === "ADM",
+    );
+    return res.status(200).send(result);
+  } catch (error) {
+    return res.status(400).send(error.message);
+  }
+}
+
 export default {
   createPlaylistController,
   getAllPlaylistController,
@@ -87,4 +115,6 @@ export default {
   updatePlaylistController,
   deletePlaylistController,
   getPlaylistViewController,
+  sharePlaylistController,
+  unsharePlaylistController,
 };

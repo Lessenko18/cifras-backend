@@ -15,6 +15,12 @@ const PlaylistSchema = new mongoose.Schema({
       ref: "Cifra",
     },
   ],
+  sharedWith: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+  ],
 });
 
 const Playlist = mongoose.model("Playlist", PlaylistSchema);

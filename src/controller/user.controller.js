@@ -163,6 +163,24 @@ async function refreshAvatarUrl(req, res) {
   }
 }
 
+async function searchUsersController(req, res) {
+  try {
+    const query = req.query.q;
+
+    if (!query || query.trim().length === 0) {
+      return res.status(400).json({ error: "Informe um termo de busca" });
+    }
+
+    const users = await userService.searchUsersByEmail(query);
+    return res.status(200).json(users);
+  } catch (error) {
+    return res.status(500).json({
+      error: "Erro ao buscar usuários",
+      message: error.message,
+    });
+  }
+}
+
 export default {
   createUserController,
   getAllUserController,
@@ -172,4 +190,5 @@ export default {
   updateProfile,
   uploadAvatar,
   refreshAvatarUrl,
+  searchUsersController,
 };

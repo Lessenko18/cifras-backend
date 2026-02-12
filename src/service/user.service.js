@@ -71,6 +71,11 @@ async function updateUserProfile(userId, updatedData, profileImage) {
   return user;
 }
 
+async function searchUsersByEmail(query) {
+  const users = await userRepositories.searchUsersByEmail(query);
+  return users;
+}
+
 export default {
   createUserService,
   getAllUserService,
@@ -78,4 +83,5 @@ export default {
   updateUserService,
   deleteUserService,
   updateUserProfile,
+  searchUsersByEmail,
 };

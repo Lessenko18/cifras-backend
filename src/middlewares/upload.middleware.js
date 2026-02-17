@@ -1,9 +1,4 @@
-import {
-  S3Client,
-  PutObjectCommand,
-  GetObjectCommand,
-} from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import multer from "multer";
 
 // Configuração AWS S3 Client (v3)
@@ -19,7 +14,7 @@ const s3Client = new S3Client({
 const storage = multer.memoryStorage();
 export const upload = multer({ storage });
 
-// Upload para S3 com URL pré-assinada - AWS SDK v3
+// Upload para S3 com URL publica - AWS SDK v3
 export const uploadToS3 = async (file) => {
   try {
     if (!file) {
@@ -42,21 +37,10 @@ export const uploadToS3 = async (file) => {
 
     await s3Client.send(putCommand);
 
-    // Gerar URL pré-assinada que expira em 2 hora (9600 segundos)
-    const getCommand = new GetObjectCommand({
-      Bucket: process.env.AWS_S3_BUCKET_NAME,
-      Key: key,
-    });
-
-    const signedUrl = await getSignedUrl(s3Client, getCommand, {
-      expiresIn: 9600, //  URL válida por 2 horas
-    });
-
     return {
       Location: `https://${process.env.AWS_S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`,
-      SignedUrl: signedUrl,
       Key: key,
-      ExpiresIn: 9600,
+      ExpiresIn: null,
     };
   } catch (error) {
     throw new Error(`Erro ao fazer upload para S3: ${error.message}`);

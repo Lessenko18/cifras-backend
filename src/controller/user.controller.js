@@ -1,7 +1,5 @@
 import userService from "../service/user.service.js";
 import { uploadToS3 } from "../middlewares/upload.middleware.js";
-import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 async function createUserController(req, res) {
   try {
@@ -89,18 +87,14 @@ async function uploadAvatar(req, res) {
     }
 
     const uploadResult = await uploadToS3(req.file);
-    const signedUrl = uploadResult.SignedUrl; // URL pré-assinada
+    const publicUrl = uploadResult.Location; // URL publica do S3
 
     // Atualizar usuário com a nova imagem
-    const updatedUser = await userService.updateUserProfile(
-      userId,
-      {},
-      signedUrl, // Armazenar a URL pré-assinada
-    );
+    await userService.updateUserProfile(userId, {}, publicUrl);
 
     return res.status(200).json({
-      imageUrl: signedUrl,
-      expiresIn: uploadResult.ExpiresIn,
+      imageUrl: publicUrl,
+      expiresIn: null,
       message: "Avatar enviado com sucesso!",
     });
   } catch (error) {
@@ -120,40 +114,37 @@ async function refreshAvatarUrl(req, res) {
       return res.status(404).json({ error: "Avatar não encontrado" });
     }
 
-    // Extrair a chave do S3 da URL PRÉ-ASSINADA atual
     const avatarUrl = user.avatar;
-    const keyMatch = avatarUrl.match(/\/avatars\/[^?]+/);
+    let key;
 
-    if (!keyMatch) {
+    try {
+      const parsedUrl = new URL(avatarUrl);
+      if (parsedUrl.pathname && parsedUrl.pathname.startsWith("/avatars/")) {
+        key = parsedUrl.pathname.substring(1);
+      }
+    } catch (parseError) {
+      // Ignorar erros de parse e tentar via regex
+    }
+
+    if (!key) {
+      const keyMatch = avatarUrl.match(/\/avatars\/[^?]+/);
+      if (keyMatch) key = keyMatch[0].substring(1);
+    }
+
+    if (!key) {
       return res.status(400).json({ error: "URL de avatar inválida" });
     }
 
-    const key = keyMatch[0].substring(1); // Remove a barra inicial
+    const publicUrl = `https://${process.env.AWS_S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
 
-    // Gerar nova URL pré-assinada usando AWS SDK v3
-    const s3Client = new S3Client({
-      region: process.env.AWS_REGION,
-      credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-      },
-    });
-
-    const getCommand = new GetObjectCommand({
-      Bucket: process.env.AWS_S3_BUCKET_NAME,
-      Key: key,
-    });
-
-    const newSignedUrl = await getSignedUrl(s3Client, getCommand, {
-      expiresIn: 3600, // 1 hora
-    });
-
-    await userService.updateUserService(userId, { avatar: newSignedUrl });
+    if (user.avatar !== publicUrl) {
+      await userService.updateUserService(userId, { avatar: publicUrl });
+    }
 
     return res.status(200).json({
-      imageUrl: newSignedUrl,
-      expiresIn: 3600,
-      message: "URL do avatar renovada!",
+      imageUrl: publicUrl,
+      expiresIn: null,
+      message: "URL do avatar atualizada!",
     });
   } catch (error) {
     return res.status(500).json({

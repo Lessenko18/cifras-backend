@@ -6,6 +6,7 @@ import userRepository from "../repositories/user.repositories.js";
 
 const RESET_TOKEN_TTL_MS =
   Number(process.env.RESET_PASSWORD_TOKEN_TTL_MS) || 1000 * 60 * 30;
+const SMTP_SEND_TIMEOUT_MS = Number(process.env.SMTP_SEND_TIMEOUT_MS) || 15000;
 const FORGOT_PASSWORD_SUCCESS_MESSAGE =
   "Se o e-mail existir na base, você receberá as instruções para redefinir a senha.";
 
@@ -36,11 +37,32 @@ function createMailTransport() {
     host,
     port,
     secure,
+    connectionTimeout: Number(process.env.SMTP_CONNECTION_TIMEOUT_MS) || 10000,
+    greetingTimeout: Number(process.env.SMTP_GREETING_TIMEOUT_MS) || 10000,
+    socketTimeout: Number(process.env.SMTP_SOCKET_TIMEOUT_MS) || 15000,
     auth: {
       user,
       pass,
     },
   });
+}
+
+async function withTimeout(promise, timeoutMs, timeoutMessage) {
+  let timeoutId;
+
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => {
+      const timeoutError = new Error(timeoutMessage);
+      timeoutError.statusCode = 504;
+      reject(timeoutError);
+    }, timeoutMs);
+  });
+
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 function hasSmtpConfig() {
@@ -157,11 +179,15 @@ export async function forgotPassword(email) {
   }
 
   try {
-    await sendResetPasswordEmail({
-      toEmail: user.email,
-      userName: user.name,
-      resetLink,
-    });
+    await withTimeout(
+      sendResetPasswordEmail({
+        toEmail: user.email,
+        userName: user.name,
+        resetLink,
+      }),
+      SMTP_SEND_TIMEOUT_MS,
+      "Tempo limite excedido ao enviar e-mail de redefinição",
+    );
   } catch (error) {
     await userRepository.updateUserRepository(user._id, {
       resetPasswordToken: null,

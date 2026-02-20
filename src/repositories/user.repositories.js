@@ -21,7 +21,10 @@ async function getUserByIdRepository(id) {
 }
 
 const findUserByEmail = async (email) => {
-  return User.findOne({ email });
+  const normalizedEmail = String(email || "")
+    .toLowerCase()
+    .trim();
+  return User.findOne({ email: normalizedEmail });
 };
 
 const findUserByResetToken = async (hashedToken) => {

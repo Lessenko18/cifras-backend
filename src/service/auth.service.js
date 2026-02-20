@@ -73,10 +73,12 @@ function hasSmtpConfig() {
 
 async function sendResetPasswordEmail({ toEmail, userName, resetLink }) {
   const transporter = createMailTransport();
-  const from = process.env.SMTP_FROM || process.env.SMTP_USER;
+  const from = process.env.SMTP_USER;
+  const replyTo = process.env.SMTP_FROM || process.env.SMTP_USER;
 
   await transporter.sendMail({
     from,
+    replyTo,
     to: toEmail,
     subject: "Redefinição de senha - Cifras Caritas",
     text: `Olá${userName ? `, ${userName}` : ""}!\n\nRecebemos uma solicitação para redefinir sua senha.\nUse o link abaixo para criar uma nova senha:\n${resetLink}\n\nEste link expira em 30 minutos.\nSe você não solicitou essa alteração, ignore este e-mail.`,
@@ -189,6 +191,15 @@ export async function forgotPassword(email) {
       "Tempo limite excedido ao enviar e-mail de redefinição",
     );
   } catch (error) {
+    console.error("[FORGOT_PASSWORD][SEND_ERROR]", {
+      email: user.email,
+      code: error?.code,
+      command: error?.command,
+      responseCode: error?.responseCode,
+      response: error?.response,
+      message: error?.message,
+    });
+
     await userRepository.updateUserRepository(user._id, {
       resetPasswordToken: null,
       resetPasswordExpires: null,

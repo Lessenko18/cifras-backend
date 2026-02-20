@@ -68,6 +68,7 @@ Autenticacao
 - POST /auth/register
 - GET /auth/me
 - POST /auth/forgot-password
+- POST /auth/reset-password
 
 Usuarios
 
@@ -121,6 +122,15 @@ Crie um arquivo .env na pasta do backend com as seguintes variaveis. Nao inclua 
 PORT=3000
 DATABASE_URL=
 JWT_SECRET=
+FRONTEND_URL=
+FRONTEND_RESET_PASSWORD_URL=
+RESET_PASSWORD_TOKEN_TTL_MS=1800000
+SMTP_HOST=
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=
+SMTP_PASS=
+SMTP_FROM=
 AWS_REGION=
 AWS_ACCESS_KEY_ID=
 AWS_SECRET_ACCESS_KEY=

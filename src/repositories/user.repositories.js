@@ -24,6 +24,13 @@ const findUserByEmail = async (email) => {
   return User.findOne({ email });
 };
 
+const findUserByResetToken = async (hashedToken) => {
+  return User.findOne({
+    resetPasswordToken: hashedToken,
+    resetPasswordExpires: { $gt: new Date() },
+  });
+};
+
 const findUsersByEmailList = async (emails) => {
   return User.find({ email: { $in: emails } });
 };
@@ -43,6 +50,7 @@ export default {
   updateUserRepository,
   deleteUserRepository,
   findUserByEmail,
+  findUserByResetToken,
   findUsersByEmailList,
   searchUsersByEmail,
 };

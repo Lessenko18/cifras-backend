@@ -80,7 +80,7 @@ async function sendResetPasswordEmail({ toEmail, userName, resetLink }) {
     from,
     replyTo,
     to: toEmail,
-    subject: "Redefinição de senha - Cifras Caritas",
+    subject: "Redefinição de senha - TL Cifras",
     text: `Olá${userName ? `, ${userName}` : ""}!\n\nRecebemos uma solicitação para redefinir sua senha.\nUse o link abaixo para criar uma nova senha:\n${resetLink}\n\nEste link expira em 30 minutos.\nSe você não solicitou essa alteração, ignore este e-mail.`,
     html: `<p>Olá${userName ? `, ${userName}` : ""}!</p><p>Recebemos uma solicitação para redefinir sua senha.</p><p>Use o link abaixo para criar uma nova senha:</p><p><a href="${resetLink}">${resetLink}</a></p><p>Este link expira em 30 minutos.</p><p>Se você não solicitou essa alteração, ignore este e-mail.</p>`,
   });
@@ -174,10 +174,7 @@ export async function forgotPassword(email) {
       "[FORGOT_PASSWORD][DEV] SMTP não configurado. Link de reset:",
       resetLink,
     );
-    return {
-      message:
-        "Ambiente de desenvolvimento: link de redefinição gerado no servidor (verifique o terminal do backend).",
-    };
+    return { message: FORGOT_PASSWORD_SUCCESS_MESSAGE };
   }
 
   try {

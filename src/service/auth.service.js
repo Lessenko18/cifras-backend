@@ -12,7 +12,11 @@ const FORGOT_PASSWORD_SUCCESS_MESSAGE =
 
 function buildResetPasswordLink(token) {
   const customResetUrl = process.env.FRONTEND_RESET_PASSWORD_URL;
-  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+  const frontendUrl =
+    process.env.FRONTEND_URL ||
+    process.env.CLIENT_URL ||
+    process.env.APP_URL ||
+    "http://localhost:5173";
 
   const baseUrl = customResetUrl || `${frontendUrl}/reset-password`;
   const separator = baseUrl.includes("?") ? "&" : "?";

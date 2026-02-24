@@ -6,7 +6,11 @@ const SMTP_SEND_TIMEOUT_MS = Number(process.env.SMTP_SEND_TIMEOUT_MS) || 15000;
 
 function buildPlaylistLink(playlistId) {
   const customPlaylistUrl = process.env.FRONTEND_PLAYLIST_URL;
-  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+  const frontendUrl =
+    process.env.FRONTEND_URL ||
+    process.env.CLIENT_URL ||
+    process.env.APP_URL ||
+    "http://localhost:5173";
 
   if (customPlaylistUrl) {
     if (customPlaylistUrl.includes(":id")) {

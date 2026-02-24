@@ -31,21 +31,35 @@ function createMailTransport() {
   const pass = process.env.SMTP_PASS;
 
   if (!host || !user || !pass) {
-    return null;
+    const missing = [];
+    if (!host) missing.push("SMTP_HOST");
+    if (!user) missing.push("SMTP_USER");
+    if (!pass) missing.push("SMTP_PASS");
+
+    return {
+      transporter: null,
+      reason: "Serviço de e-mail não configurado",
+      missing,
+    };
   }
 
-  return nodemailer.createTransport({
-    host,
-    port,
-    secure,
-    connectionTimeout: Number(process.env.SMTP_CONNECTION_TIMEOUT_MS) || 10000,
-    greetingTimeout: Number(process.env.SMTP_GREETING_TIMEOUT_MS) || 10000,
-    socketTimeout: Number(process.env.SMTP_SOCKET_TIMEOUT_MS) || 15000,
-    auth: {
-      user,
-      pass,
-    },
-  });
+  return {
+    transporter: nodemailer.createTransport({
+      host,
+      port,
+      secure,
+      connectionTimeout:
+        Number(process.env.SMTP_CONNECTION_TIMEOUT_MS) || 10000,
+      greetingTimeout: Number(process.env.SMTP_GREETING_TIMEOUT_MS) || 10000,
+      socketTimeout: Number(process.env.SMTP_SOCKET_TIMEOUT_MS) || 15000,
+      auth: {
+        user,
+        pass,
+      },
+    }),
+    reason: null,
+    missing: [],
+  };
 }
 
 async function withTimeout(promise, timeoutMs, timeoutMessage) {
@@ -76,11 +90,12 @@ async function sendPlaylistShareEmails({
     };
   }
 
-  const transporter = createMailTransport();
+  const { transporter, reason, missing } = createMailTransport();
   if (!transporter) {
     return {
       sent: false,
-      reason: "Serviço de e-mail não configurado",
+      reason,
+      missing,
     };
   }
 
@@ -266,10 +281,22 @@ async function sharePlaylistService(id, emails, userId, isAdmin = false) {
     return {
       message:
         "Playlist compartilhada com sucesso, mas não foi possível enviar os e-mails.",
+      email: {
+        sent: false,
+        reason: emailResult.reason || null,
+        missing: emailResult.missing || [],
+        failures: emailResult.failures || [],
+      },
     };
   }
 
-  return { message: "Playlist compartilhada com sucesso" };
+  return {
+    message: "Playlist compartilhada com sucesso",
+    email: {
+      sent: true,
+      failures: emailResult.failures || [],
+    },
+  };
 }
 
 async function unsharePlaylistService(id, emails, userId, isAdmin = false) {

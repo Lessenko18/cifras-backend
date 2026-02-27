@@ -51,7 +51,10 @@ async function deletePlaylistController(req, res) {
     );
     return res.status(200).send({ message: "Playlist deletada com sucesso" });
   } catch (error) {
-    return res.status(400).send(error.message);
+    const statusCode = Number.isInteger(error?.status) ? error.status : 400;
+    return res
+      .status(statusCode)
+      .send({ message: error?.message || "Erro ao excluir playlist" });
   }
 }
 

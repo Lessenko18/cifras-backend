@@ -1,10 +1,65 @@
 import playlistRepositories from "../repositories/playlist.repositories.js";
 import userRepositories from "../repositories/user.repositories.js";
 import nodemailer from "nodemailer";
+import mongoose from "mongoose";
 
 const SMTP_SEND_TIMEOUT_MS = Number(process.env.SMTP_SEND_TIMEOUT_MS) || 15000;
 const SMTP_VERIFY_TIMEOUT_MS =
   Number(process.env.SMTP_VERIFY_TIMEOUT_MS) || 12000;
+
+function normalizeComparableId(value, seen = new Set(), depth = 0) {
+  if (!value) return "";
+  if (depth > 6) return "";
+
+  if (typeof value === "string") {
+    return value.trim();
+  }
+
+  if (typeof value === "number" || typeof value === "bigint") {
+    return String(value).trim();
+  }
+
+  if (typeof value === "object") {
+    if (seen.has(value)) return "";
+    seen.add(value);
+
+    if (value.$oid) return String(value.$oid).trim();
+
+    if (Object.prototype.hasOwnProperty.call(value, "_id") && value._id) {
+      return normalizeComparableId(value._id, seen, depth + 1);
+    }
+
+    if (Object.prototype.hasOwnProperty.call(value, "id") && value.id) {
+      return normalizeComparableId(value.id, seen, depth + 1);
+    }
+  }
+
+  if (typeof value?.toString === "function") {
+    const converted = value.toString().trim();
+    if (converted && converted !== "[object Object]") {
+      return converted;
+    }
+  }
+
+  return "";
+}
+
+function isSameId(left, right) {
+  const normalizedLeft = normalizeComparableId(left);
+  const normalizedRight = normalizeComparableId(right);
+
+  return (
+    normalizedLeft.length > 0 &&
+    normalizedRight.length > 0 &&
+    normalizedLeft === normalizedRight
+  );
+}
+
+function createServiceError(message, status) {
+  const error = new Error(message);
+  error.status = status;
+  return error;
+}
 
 function buildPlaylistLink(playlistId) {
   const customPlaylistUrl = process.env.FRONTEND_PLAYLIST_URL;
@@ -282,13 +337,52 @@ async function updatePlaylistService(id, data, userId, isAdmin = false) {
 }
 
 async function deletePlaylistService(id, userId, isAdmin = false) {
-  const playlist = await playlistRepositories.getPlaylistByIdRepository(
+  if (!mongoose.isValidObjectId(id)) {
+    throw createServiceError("ID de playlist inválido.", 400);
+  }
+
+  // 1. Buscamos a playlist ignorando o dono apenas para validar se ela existe
+  const playlistExistente =
+    await playlistRepositories.getPlaylistByIdRepository(id, userId, true);
+
+  if (!playlistExistente) {
+    throw createServiceError("Playlist não encontrada", 404);
+  }
+
+  // 2. Verificamos se o usuário logado é o criador ou ADM
+  const eCriador = isSameId(playlistExistente.criador, userId);
+
+  if (!isAdmin && !eCriador) {
+    throw createServiceError(
+      "Somente o criador ou ADM pode excluir a playlist.",
+      403,
+    );
+  }
+
+  // 3. Se passou na validação, deletamos passando isAdmin=true para o repositório deletar pelo ID
+  const deleteResult = await playlistRepositories.deletePlaylistRepository(
     id,
     userId,
-    isAdmin,
+    true,
   );
-  if (!playlist) throw new Error("Playlist não encontrada");
-  await playlistRepositories.deletePlaylistRepository(id, userId, isAdmin);
+
+  if (!deleteResult || deleteResult.deletedCount !== 1) {
+    throw createServiceError(
+      "Erro ao excluir a playlist. Tente novamente.",
+      500,
+    );
+  }
+
+  const stillExists =
+    await playlistRepositories.playlistExistsByIdRepository(id);
+
+  if (stillExists) {
+    throw createServiceError(
+      "A playlist não foi removida do banco. Tente novamente.",
+      500,
+    );
+  }
+
   return { message: "Playlist deletada com sucesso" };
 }
 
@@ -303,7 +397,7 @@ async function getAllPlaylistService(userId, isAdmin = false) {
 }
 
 async function getPlaylistById(id, userId, isAdmin = false) {
-  const playlist = await playlistRepositories.getPlaylistByIdForReadRepository(
+  const playlist = await playlistRepositories.getPlaylistByIdRepository(
     id,
     userId,
     isAdmin,
@@ -313,13 +407,14 @@ async function getPlaylistById(id, userId, isAdmin = false) {
   return playlist;
 }
 
-async function sharePlaylistService(id, emails, userId, isAdmin = false) {
-  if (!Array.isArray(emails) || emails.length === 0) {
-    throw new Error("Informe ao menos um email");
-  }
-
+async function sharePlaylistService(
+  playlistId,
+  emails,
+  userId,
+  isAdmin = false,
+) {
   const playlist = await playlistRepositories.getPlaylistByIdRepository(
-    id,
+    playlistId,
     userId,
     isAdmin,
   );
@@ -332,74 +427,41 @@ async function sharePlaylistService(id, emails, userId, isAdmin = false) {
   const users = await userRepositories.findUsersByEmailList(normalizedEmails);
   const userIds = users.map((user) => user._id);
 
-  if (userIds.length !== normalizedEmails.length) {
-    const foundEmails = new Set(users.map((user) => user.email));
-    const missing = normalizedEmails.filter((email) => !foundEmails.has(email));
-    throw new Error(`Usuários não encontrados: ${missing.join(", ")}`);
+  if (userIds.length === 0) {
+    throw new Error("Nenhum usuário encontrado com os e-mails fornecidos.");
   }
 
-  // Evita compartilhar com o próprio criador
-  const filteredUserIds = userIds.filter(
-    (id) => String(id) !== String(playlist.criador),
-  );
-
   await playlistRepositories.addUsersToSharedWithRepository(
-    id,
-    filteredUserIds,
+    playlistId,
+    userIds,
   );
 
-  const recipients = users
-    .filter((user) => String(user._id) !== String(playlist.criador))
-    .map((user) => ({ email: user.email, name: user.name }));
-
-  const playlistLink = buildPlaylistLink(id);
-  const emailResult = await sendPlaylistShareEmails({
-    recipients,
+  const playlistLink = buildPlaylistLink(playlistId);
+  const emailResults = await sendPlaylistShareEmails({
+    recipients: users.map((u) => ({ email: u.email, name: u.name })),
     playlistName: playlist.nome,
     playlistLink,
   });
 
-  if (emailResult.failures?.length) {
-    console.error("[SHARE_PLAYLIST][SEND_EMAIL_ERROR]", {
-      playlistId: id,
-      failures: emailResult.failures,
-      attempts: emailResult.attempts || [],
-      selectedTransport: emailResult.selectedTransport || null,
-    });
-  }
-
-  if (!emailResult.sent) {
-    return {
-      message:
-        "Playlist compartilhada com sucesso, mas não foi possível enviar os e-mails.",
-      email: {
-        sent: false,
-        reason: emailResult.reason || null,
-        missing: emailResult.missing || [],
-        failures: emailResult.failures || [],
-        attempts: emailResult.attempts || [],
-        selectedTransport: emailResult.selectedTransport || null,
-      },
-    };
-  }
+  const foundEmails = new Set(users.map((u) => u.email.toLowerCase()));
+  const missingEmails = normalizedEmails.filter((e) => !foundEmails.has(e));
 
   return {
     message: "Playlist compartilhada com sucesso",
-    email: {
-      sent: true,
-      failures: emailResult.failures || [],
-      selectedTransport: emailResult.selectedTransport || null,
-    },
+    sharedWith: users.map((u) => u.email),
+    notRegistered: missingEmails,
+    emailStatus: emailResults,
   };
 }
 
-async function unsharePlaylistService(id, emails, userId, isAdmin = false) {
-  if (!Array.isArray(emails) || emails.length === 0) {
-    throw new Error("Informe ao menos um email");
-  }
-
+async function unsharePlaylistService(
+  playlistId,
+  emails,
+  userId,
+  isAdmin = false,
+) {
   const playlist = await playlistRepositories.getPlaylistByIdRepository(
-    id,
+    playlistId,
     userId,
     isAdmin,
   );
@@ -412,15 +474,19 @@ async function unsharePlaylistService(id, emails, userId, isAdmin = false) {
   const users = await userRepositories.findUsersByEmailList(normalizedEmails);
   const userIds = users.map((user) => user._id);
 
-  if (userIds.length !== normalizedEmails.length) {
-    const foundEmails = new Set(users.map((user) => user.email));
-    const missing = normalizedEmails.filter((email) => !foundEmails.has(email));
-    throw new Error(`Usuários não encontrados: ${missing.join(", ")}`);
+  if (userIds.length === 0) {
+    throw new Error("Nenhum usuário encontrado com os e-mails fornecidos.");
   }
 
-  await playlistRepositories.removeUsersFromSharedWithRepository(id, userIds);
+  await playlistRepositories.removeUsersFromSharedWithRepository(
+    playlistId,
+    userIds,
+  );
 
-  return { message: "Compartilhamento removido com sucesso" };
+  return {
+    message: "Compartilhamento removido com sucesso",
+    removed: users.map((u) => u.email),
+  };
 }
 
 export default {

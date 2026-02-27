@@ -1,12 +1,20 @@
 import Playlist from "../models/Playlist.js";
+import mongoose from "mongoose";
 
 async function createPlaylistRepository(data) {
   return Playlist.create(data);
 }
+
 async function getPlaylistViewRepository(id, userId, isAdmin = false) {
   const filter = isAdmin
-    ? { _id: id }
-    : { _id: id, $or: [{ criador: userId }, { sharedWith: userId }] };
+    ? { _id: new mongoose.Types.ObjectId(id) }
+    : {
+        _id: new mongoose.Types.ObjectId(id),
+        $or: [
+          { criador: new mongoose.Types.ObjectId(userId) },
+          { sharedWith: new mongoose.Types.ObjectId(userId) },
+        ],
+      };
   return Playlist.findOne(filter)
     .populate("cifras", "nome observacao")
     .select("nome cifras");
@@ -14,32 +22,70 @@ async function getPlaylistViewRepository(id, userId, isAdmin = false) {
 
 async function updatePlaylistRepository(id, data, userId, isAdmin = false) {
   const filter = isAdmin
-    ? { _id: id }
-    : { _id: id, $or: [{ criador: userId }, { sharedWith: userId }] };
+    ? { _id: new mongoose.Types.ObjectId(id) }
+    : {
+        _id: new mongoose.Types.ObjectId(id),
+        $or: [
+          { criador: new mongoose.Types.ObjectId(userId) },
+          { sharedWith: new mongoose.Types.ObjectId(userId) },
+        ],
+      };
   return Playlist.findOneAndUpdate(filter, data, { new: true });
 }
 
 async function deletePlaylistRepository(id, userId, isAdmin = false) {
-  const filter = isAdmin ? { _id: id } : { _id: id, criador: userId };
-  return Playlist.findOneAndDelete(filter);
+  // Garantimos que os IDs sejam tratados como ObjectId para evitar falhas de comparação
+  const playlistId = new mongoose.Types.ObjectId(id);
+  const userObjectId = new mongoose.Types.ObjectId(userId);
+
+  const filter = isAdmin
+    ? { _id: playlistId }
+    : {
+        _id: playlistId,
+        criador: userObjectId,
+      };
+
+  return Playlist.deleteOne(filter);
+}
+
+async function playlistExistsByIdRepository(id) {
+  const playlistId = new mongoose.Types.ObjectId(id);
+  const found = await Playlist.exists({ _id: playlistId });
+  return Boolean(found);
 }
 
 async function getAllPlaylistRepository(userId, isAdmin = false) {
   const filter = isAdmin
     ? {}
-    : { $or: [{ criador: userId }, { sharedWith: userId }] };
+    : {
+        $or: [
+          { criador: new mongoose.Types.ObjectId(userId) },
+          { sharedWith: new mongoose.Types.ObjectId(userId) },
+        ],
+      };
   return Playlist.find(filter).sort({ _id: -1 });
 }
 
 async function getPlaylistByIdRepository(id, userId, isAdmin = false) {
-  const filter = isAdmin ? { _id: id } : { _id: id, criador: userId };
+  const filter = isAdmin
+    ? { _id: new mongoose.Types.ObjectId(id) }
+    : {
+        _id: new mongoose.Types.ObjectId(id),
+        criador: new mongoose.Types.ObjectId(userId),
+      };
   return Playlist.findOne(filter);
 }
 
 async function getPlaylistByIdForReadRepository(id, userId, isAdmin = false) {
   const filter = isAdmin
-    ? { _id: id }
-    : { _id: id, $or: [{ criador: userId }, { sharedWith: userId }] };
+    ? { _id: new mongoose.Types.ObjectId(id) }
+    : {
+        _id: new mongoose.Types.ObjectId(id),
+        $or: [
+          { criador: new mongoose.Types.ObjectId(userId) },
+          { sharedWith: new mongoose.Types.ObjectId(userId) },
+        ],
+      };
   return Playlist.findOne(filter);
 }
 
@@ -77,4 +123,5 @@ export default {
   getPlaylistByIdForReadRepository,
   addUsersToSharedWithRepository,
   removeUsersFromSharedWithRepository,
+  playlistExistsByIdRepository,
 };

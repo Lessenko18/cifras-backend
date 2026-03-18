@@ -25,6 +25,10 @@ const CifraSchema = new mongoose.Schema({
       ref: "Categoria",
     },
   ],
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+  },
 });
 
 const Cifra = mongoose.model("Cifra", CifraSchema);

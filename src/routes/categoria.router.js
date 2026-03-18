@@ -4,27 +4,28 @@ import categoriaController from "../controller/categoria.controller.js";
 
 const categoriaRouter = Router();
 
-// Rotas públicas
+// Todas as rotas de categoria exigem autenticação
+categoriaRouter.use(authMiddleware);
+
+// Leitura liberada para usuário autenticado
 categoriaRouter.get("/search", categoriaController.searchCategoriaController);
 categoriaRouter.get("/:id", categoriaController.getCategoriaByIdController);
 categoriaRouter.get("/", categoriaController.getAllCategoriaController);
 
-// Rotas protegidas
+// Escrita restrita a ADM
 categoriaRouter.post(
   "/create",
-  authMiddleware,
   denyNonAdm,
   categoriaController.createCategoriaController,
 );
 
 categoriaRouter.patch(
   "/update/:id",
-  authMiddleware,
+  denyNonAdm,
   categoriaController.updateCategoriaController,
 );
 categoriaRouter.delete(
   "/delete/:id",
-  authMiddleware,
   denyNonAdm,
   categoriaController.deleteCategoriaController,
 );

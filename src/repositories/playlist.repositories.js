@@ -34,7 +34,6 @@ async function updatePlaylistRepository(id, data, userId, isAdmin = false) {
 }
 
 async function deletePlaylistRepository(id, userId, isAdmin = false) {
-  // Garantimos que os IDs sejam tratados como ObjectId para evitar falhas de comparação
   const playlistId = new mongoose.Types.ObjectId(id);
   const userObjectId = new mongoose.Types.ObjectId(userId);
 

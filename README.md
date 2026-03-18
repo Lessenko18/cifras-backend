@@ -67,6 +67,7 @@ Autenticacao
 - POST /auth/login
 - POST /auth/register
 - GET /auth/me
+- POST /auth/logout
 - POST /auth/forgot-password
 - POST /auth/reset-password
 
@@ -109,12 +110,20 @@ Playlists
 
 Upload de avatar (S3)
 
-- POST /user/get-presigned-url (opcional, quando usar upload direto)
 - POST /user/upload-avatar (upload via backend, usado atualmente)
+- POST /user/refresh-avatar-url
 
 ## Configuracao e instalacao
 
 ### Configuracao do ambiente
+
+### Pre-requisitos
+
+- Node.js 20+
+- MongoDB (local ou Atlas)
+- Conta AWS com permissao de escrita no bucket S3 (para avatar)
+
+### Variaveis de ambiente (.env)
 
 Crie um arquivo .env na pasta do backend com as seguintes variaveis. Nao inclua valores reais no README e nao commite o .env no repositorio.
 
@@ -138,6 +147,8 @@ SMTP_CONNECTION_TIMEOUT_MS=10000
 SMTP_GREETING_TIMEOUT_MS=10000
 SMTP_SOCKET_TIMEOUT_MS=15000
 SMTP_SEND_TIMEOUT_MS=15000
+SMTP_VERIFY_TIMEOUT_MS=12000
+SMTP_FALLBACK_ENABLED=true
 AWS_REGION=
 AWS_ACCESS_KEY_ID=
 AWS_SECRET_ACCESS_KEY=
@@ -159,6 +170,12 @@ npm run dev
 ```
 
 O servidor sobe por padrao em http://localhost:3000.
+
+### Deploy
+
+- O projeto possui configuracao para Vercel em `vercel.json`.
+- Em ambiente serverless, a entrada usada no deploy e `app.js`.
+- Para execucao local em servidor HTTP, utilize `npm run dev`.
 
 ### Como rodar o frontend
 

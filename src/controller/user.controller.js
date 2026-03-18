@@ -1,5 +1,9 @@
 import userService from "../service/user.service.js";
-import { uploadToS3 } from "../middlewares/upload.middleware.js";
+import {
+  getSignedAvatarUrl,
+  resolveAvatarKey,
+  uploadToS3,
+} from "../middlewares/upload.middleware.js";
 
 async function createUserController(req, res) {
   try {
@@ -20,6 +24,15 @@ async function getAllUserController(req, res) {
 }
 
 async function getUserByIdController(req, res) {
+  const isAdm = req.userLevel === "ADM";
+  const isSelf = req.userId === req.params.id;
+
+  if (!isAdm && !isSelf) {
+    return res.status(403).json({
+      message: "Usuário comum só pode consultar o próprio perfil",
+    });
+  }
+
   try {
     const user = await userService.getUserById(req.params.id);
     return res.status(200).send(user);
@@ -30,8 +43,24 @@ async function getUserByIdController(req, res) {
 
 async function updateUserController(req, res) {
   const id = req.params.id;
+
+  const isAdm = req.userLevel === "ADM";
+  const isSelfUpdate = req.userId === id;
+
+  if (!isAdm && !isSelfUpdate) {
+    return res.status(403).json({
+      message: "Usuário comum só pode editar o próprio perfil",
+    });
+  }
+
+  const payload = { ...req.body };
+
+  if (!isAdm && Object.prototype.hasOwnProperty.call(payload, "level")) {
+    delete payload.level;
+  }
+
   try {
-    const user = await userService.updateUserService(id, req.body);
+    const user = await userService.updateUserService(id, payload);
     return res.status(200).send(user);
   } catch (error) {
     return res.status(400).send(error.message);
@@ -53,24 +82,45 @@ async function updateProfile(req, res) {
 
   try {
     const updatedData = req.body;
-    let profileImage;
+    delete updatedData.level;
+
+    let avatarKey;
 
     if (req.file) {
       const uploadResult = await uploadToS3(req.file);
-      profileImage = uploadResult.Location; // URL pública da imagem
+      avatarKey = uploadResult.Key;
     }
 
     const updatedUser = await userService.updateUserProfile(
       userId,
       updatedData,
-      profileImage,
+      avatarKey,
     );
+
+    const signedAvatarUrl = updatedUser.avatar
+      ? await getSignedAvatarUrl(updatedUser.avatar)
+      : null;
 
     return res.status(200).json({
       message: "Perfil atualizado com sucesso!",
-      user: updatedUser,
+      user: {
+        ...updatedUser.toObject(),
+        avatarUrl: signedAvatarUrl,
+      },
     });
   } catch (error) {
+    if (error?.code === "LIMIT_FILE_SIZE") {
+      return res.status(413).json({
+        message: "Arquivo muito grande. Limite máximo de 200MB.",
+      });
+    }
+
+    if (error?.statusCode) {
+      return res.status(error.statusCode).json({
+        message: error.message,
+      });
+    }
+
     return res.status(500).json({
       message: "Erro ao atualizar perfil",
       error: error.message,
@@ -87,17 +137,31 @@ async function uploadAvatar(req, res) {
     }
 
     const uploadResult = await uploadToS3(req.file);
-    const publicUrl = uploadResult.Location; // URL publica do S3
+    const avatarKey = uploadResult.Key;
 
     // Atualizar usuário com a nova imagem
-    await userService.updateUserProfile(userId, {}, publicUrl);
+    await userService.updateUserProfile(userId, {}, avatarKey);
 
     return res.status(200).json({
-      imageUrl: publicUrl,
-      expiresIn: null,
+      imageUrl: uploadResult.Location,
+      expiresIn: uploadResult.ExpiresIn,
       message: "Avatar enviado com sucesso!",
     });
   } catch (error) {
+    if (error?.code === "LIMIT_FILE_SIZE") {
+      return res.status(413).json({
+        error: "Arquivo muito grande",
+        message: "Limite máximo permitido é de 200MB",
+      });
+    }
+
+    if (error?.statusCode) {
+      return res.status(error.statusCode).json({
+        error: "Erro de validação do arquivo",
+        message: error.message,
+      });
+    }
+
     return res.status(500).json({
       error: "Erro ao fazer upload do avatar",
       message: error.message,
@@ -114,36 +178,21 @@ async function refreshAvatarUrl(req, res) {
       return res.status(404).json({ error: "Avatar não encontrado" });
     }
 
-    const avatarUrl = user.avatar;
-    let key;
-
-    try {
-      const parsedUrl = new URL(avatarUrl);
-      if (parsedUrl.pathname && parsedUrl.pathname.startsWith("/avatars/")) {
-        key = parsedUrl.pathname.substring(1);
-      }
-    } catch (parseError) {
-      // Ignorar erros de parse e tentar via regex
-    }
-
-    if (!key) {
-      const keyMatch = avatarUrl.match(/\/avatars\/[^?]+/);
-      if (keyMatch) key = keyMatch[0].substring(1);
-    }
+    const key = resolveAvatarKey(user.avatar);
 
     if (!key) {
       return res.status(400).json({ error: "URL de avatar inválida" });
     }
 
-    const publicUrl = `https://${process.env.AWS_S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+    const signedUrl = await getSignedAvatarUrl(key);
 
-    if (user.avatar !== publicUrl) {
-      await userService.updateUserService(userId, { avatar: publicUrl });
+    if (user.avatar !== key) {
+      await userService.updateUserService(userId, { avatar: key });
     }
 
     return res.status(200).json({
-      imageUrl: publicUrl,
-      expiresIn: null,
+      imageUrl: signedUrl,
+      expiresIn: 60 * 60,
       message: "URL do avatar atualizada!",
     });
   } catch (error) {

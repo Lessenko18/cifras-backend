@@ -2,13 +2,19 @@ import bcrypt from "bcrypt";
 import userRepositories from "../repositories/user.repositories.js";
 
 async function createUserService(data) {
-  if (!data.nome || !data.password || !data.level || !data.email)
+  if (!data.name || !data.password || !data.email)
     throw new Error("Preencha todas as informações");
 
-  if (data.password) {
-    data.password = await bcrypt.hash(data.password, 10);
+  const normalizedData = {
+    ...data,
+    level: data.level || "USER",
+  };
+
+  if (normalizedData.password) {
+    normalizedData.password = await bcrypt.hash(normalizedData.password, 10);
   }
-  const user = await userRepositories.createUserRepository(data);
+
+  const user = await userRepositories.createUserRepository(normalizedData);
   return user;
 }
 
@@ -60,11 +66,11 @@ async function updateUserProfile(userId, updatedData, profileImage) {
   const user = await userRepositories.getUserByIdRepository(userId);
   if (!user) throw new Error("Usuário não encontrado");
 
-  // Remove o campo password do updatedData para evitar sobrescrever a senha
-  const { password, ...dataWithoutPassword } = updatedData;
+  // Remove campos sensíveis para evitar sobrescrever senha/nível por esta rota
+  const { password, level, ...dataWithoutSensitiveFields } = updatedData;
 
   // Atualiza os dados do usuário (exceto a senha)
-  Object.assign(user, dataWithoutPassword);
+  Object.assign(user, dataWithoutSensitiveFields);
   if (profileImage) user.avatar = profileImage;
 
   await user.save();

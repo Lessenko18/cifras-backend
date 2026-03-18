@@ -2,30 +2,36 @@ import cifraService from "../service/cifra.service.js";
 
 async function createCifraController(req, res) {
   try {
-    const cifra = await cifraService.createCifraService(req.body);
+    const cifra = await cifraService.createCifraService(req.body, req.userId);
     return res.status(201).send(cifra);
   } catch (error) {
-    return res.status(400).send(error.message);
+    return res.status(error?.statusCode || 400).send(error.message);
   }
 }
 
 async function updateCifraController(req, res) {
   const id = req.params.id;
   try {
-    const cifra = await cifraService.updateCifraService(id, req.body);
+    const cifra = await cifraService.updateCifraService(id, req.body, {
+      requesterId: req.userId,
+      requesterLevel: req.userLevel,
+    });
     return res.status(200).send(cifra);
   } catch (error) {
-    return res.status(400).send(error.message);
+    return res.status(error?.statusCode || 400).send(error.message);
   }
 }
 
 async function deleteCifraController(req, res) {
   const id = req.params.id;
   try {
-    await cifraService.deleteCifraService(id);
+    await cifraService.deleteCifraService(id, {
+      requesterId: req.userId,
+      requesterLevel: req.userLevel,
+    });
     return res.status(200).send({ message: "Cifra deletada com sucesso" });
   } catch (error) {
-    return res.status(400).send(error.message);
+    return res.status(error?.statusCode || 400).send(error.message);
   }
 }
 

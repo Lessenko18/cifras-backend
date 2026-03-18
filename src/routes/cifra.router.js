@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { authMiddleware, denyNonAdm } from "../middlewares/auth.middleware.js";
+import { authMiddleware } from "../middlewares/auth.middleware.js";
 import cifraController from "../controller/cifra.controller.js";
 
 const cifraRouter = Router();
@@ -27,7 +27,6 @@ cifraRouter.patch(
 cifraRouter.delete(
   "/delete/:id",
   authMiddleware,
-  denyNonAdm,
   cifraController.deleteCifraController,
 );
 

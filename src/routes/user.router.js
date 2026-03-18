@@ -1,7 +1,10 @@
 import { Router } from "express";
 import { authMiddleware, denyNonAdm } from "../middlewares/auth.middleware.js";
 import userController from "../controller/user.controller.js";
-import { upload } from "../middlewares/upload.middleware.js";
+import {
+  avatarUploadRateLimit,
+  upload,
+} from "../middlewares/upload.middleware.js";
 
 const userRouter = Router();
 
@@ -17,10 +20,10 @@ userRouter.delete(
   userController.deleteUserController,
 );
 
-userRouter.get("/search", userController.searchUsersController);
+userRouter.get("/search", denyNonAdm, userController.searchUsersController);
 
 userRouter.get("/:id", userController.getUserByIdController);
-userRouter.get("/", userController.getAllUserController);
+userRouter.get("/", denyNonAdm, userController.getAllUserController);
 
 // Atualizar perfil do usuário (com imagem)
 userRouter.put(
@@ -32,6 +35,7 @@ userRouter.put(
 // Upload de avatar
 userRouter.post(
   "/upload-avatar",
+  avatarUploadRateLimit,
   upload.single("avatar"),
   userController.uploadAvatar,
 );

@@ -6,7 +6,7 @@ import { fileTypeFromBuffer } from "file-type";
 import multer from "multer";
 import { v4 as uuidv4 } from "uuid";
 
-const MAX_UPLOAD_SIZE_BYTES = 200 * 1024 * 1024;
+const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024;
 const SIGNED_URL_TTL_SECONDS = 60 * 60;
 
 const ALLOWED_IMAGE_MIME_TYPES = new Set([

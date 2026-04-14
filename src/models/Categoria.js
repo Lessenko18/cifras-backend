@@ -7,6 +7,11 @@ const CategoriaSchema = new mongoose.Schema({
     unique: true,
     trim: true,
   },
+  parent: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Categoria",
+    default: null,
+  },
 });
 
 const Categoria = mongoose.model("Categoria", CategoriaSchema);

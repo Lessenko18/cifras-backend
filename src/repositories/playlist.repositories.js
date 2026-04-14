@@ -107,7 +107,7 @@ async function removeUsersFromSharedWithRepository(id, userIds) {
 async function removeCifraFromAllPlaylists(cifraId) {
   return Playlist.updateMany(
     { cifras: cifraId },
-    { $pull: { cifras: { _id: cifraId } } },
+    { $pull: { cifras: cifraId } },
   );
 }
 

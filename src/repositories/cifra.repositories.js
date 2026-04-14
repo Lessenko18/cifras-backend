@@ -13,11 +13,11 @@ async function deleteCifraRepository(id) {
 }
 
 async function getAllCifraRepository() {
-  return Cifra.find().sort({ _id: -1 });
+  return Cifra.find().sort({ _id: -1 }).lean();
 }
 
 async function getCifraByIdRepository(id) {
-  return Cifra.findById(id);
+  return Cifra.findById(id).lean();
 }
 
 async function searchCifraRepository(nome) {
@@ -29,11 +29,12 @@ async function searchCifraRepository(nome) {
     nome: { $regex: nome.trim(), $options: "i" },
   })
     .collation({ locale: "pt", strength: 1 })
-    .sort({ nome: 1 });
+    .sort({ nome: 1 })
+    .lean();
 }
 
 async function getCifraByCategoriaRepository(categoria) {
-  return Cifra.find({ categoria }).sort({ nome: 1 });
+  return Cifra.find({ categorias: categoria }).sort({ nome: 1 }).lean();
 }
 
 export default {

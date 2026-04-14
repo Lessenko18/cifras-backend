@@ -31,5 +31,8 @@ const CifraSchema = new mongoose.Schema({
   },
 });
 
+CifraSchema.index({ nome: "text" });
+CifraSchema.index({ categorias: 1 });
+
 const Cifra = mongoose.model("Cifra", CifraSchema);
 export default Cifra;

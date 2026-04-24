@@ -1,4 +1,4 @@
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import userRepositories from "../repositories/user.repositories.js";
 
 async function createUserService(data) {
@@ -82,6 +82,14 @@ async function searchUsersByEmail(query) {
   return users;
 }
 
+async function toggleFavoritoService(userId, cifraId) {
+  return userRepositories.toggleFavoritoRepository(userId, cifraId);
+}
+
+async function getFavoritosService(userId) {
+  return userRepositories.getFavoritosRepository(userId);
+}
+
 export default {
   createUserService,
   getAllUserService,
@@ -90,4 +98,6 @@ export default {
   deleteUserService,
   updateUserProfile,
   searchUsersByEmail,
+  toggleFavoritoService,
+  getFavoritosService,
 };

@@ -22,7 +22,6 @@ userRouter.delete(
 
 userRouter.get("/search", denyNonAdm, userController.searchUsersController);
 
-userRouter.get("/:id", userController.getUserByIdController);
 userRouter.get("/", denyNonAdm, userController.getAllUserController);
 
 // Atualizar perfil do usuário (com imagem)
@@ -42,5 +41,11 @@ userRouter.post(
 
 // Renovar URL do avatar (para quando a URL pré-assinada expirar)
 userRouter.post("/refresh-avatar-url", userController.refreshAvatarUrl);
+
+// Favoritos — deve vir ANTES de /:id para não ser capturado como parâmetro
+userRouter.get("/favoritos", userController.getFavoritosController);
+userRouter.post("/favoritos/:cifraId", userController.toggleFavoritoController);
+
+userRouter.get("/:id", userController.getUserByIdController);
 
 export default userRouter;

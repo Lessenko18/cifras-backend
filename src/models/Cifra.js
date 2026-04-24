@@ -5,10 +5,10 @@ const CifraSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  // artista: {
-  //   type: String,
-  //   required: true,
-  // },
+  artista: {
+    type: String,
+    default: "",
+  },
   link: {
     type: String,
     required: true,

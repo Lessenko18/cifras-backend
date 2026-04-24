@@ -65,11 +65,8 @@ export async function deleteCifraService(id, requesterContext) {
   };
 }
 
-async function getAllCifraService() {
-  const cifras = await cifraRepositories.getAllCifraRepository();
-  if (cifras.length == 0) return { message: "Nenhuma cifra cadastrada" };
-
-  return cifras;
+async function getAllCifraService({ nome, categorias, favoritos, page, limit } = {}) {
+  return cifraRepositories.getAllCifraRepository({ nome, categorias, favoritos, page, limit });
 }
 
 async function getCifraById(id) {
@@ -78,25 +75,10 @@ async function getCifraById(id) {
 
   return cifra;
 }
-async function searchCifraService(nome) {
-  const cifras = await cifraRepositories.searchCifraRepository(nome);
-  if (cifras.length == 0) return { message: "Nenhuma Cifra cadastrada" };
-  return cifras;
-}
-async function getCifraByCategoriaService(categoria) {
-  const cifras =
-    await cifraRepositories.getCifraByCategoriaRepository(categoria);
-  if (!cifras || cifras.length === 0)
-    throw new Error("Nenhuma Cifra cadastrada");
-
-  return cifras;
-}
 export default {
   createCifraService,
   getAllCifraService,
   getCifraById,
   updateCifraService,
   deleteCifraService,
-  searchCifraService,
-  getCifraByCategoriaService,
 };

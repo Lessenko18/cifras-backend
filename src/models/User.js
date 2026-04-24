@@ -30,6 +30,12 @@ const UserSchema = new mongoose.Schema({
       ref: "Playlist",
     },
   ],
+  favoritos: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Cifra",
+    },
+  ],
   resetPasswordToken: {
     type: String,
     default: null,

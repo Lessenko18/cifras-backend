@@ -37,8 +37,20 @@ async function deleteCifraController(req, res) {
 
 async function getAllCifraController(req, res) {
   try {
-    const cifra = await cifraService.getAllCifraService();
-    return res.status(200).send(cifra);
+    const { nome, categorias, favoritos, page, limit } = req.query;
+
+    const toArray = (val) =>
+      val ? String(val).split(",").map((s) => s.trim()).filter(Boolean) : undefined;
+
+    const result = await cifraService.getAllCifraService({
+      nome: nome ? String(nome) : undefined,
+      categorias: toArray(categorias),
+      favoritos: toArray(favoritos),
+      page: page !== undefined ? Number(page) : 0,
+      limit: limit !== undefined ? Math.min(Number(limit), 100) : 15,
+    });
+
+    return res.status(200).json(result);
   } catch (error) {
     return res.status(400).send(error.message);
   }
@@ -52,30 +64,10 @@ async function getCifraByIdController(req, res) {
     return res.status(400).send(error.message);
   }
 }
-async function searchCifraController(req, res) {
-  const { nome } = req.query;
-  try {
-    const cifras = await cifraService.searchCifraService(nome);
-    return res.status(200).send(cifras);
-  } catch (error) {
-    return res.status(400).send(error.message);
-  }
-}
-async function getCifraByCategoriaController(req, res) {
-  try {
-    const cifra = await cifraService.getCifraByCategoria(req.params.categoria);
-    return res.status(200).send(cifra);
-  } catch (error) {
-    return res.status(400).send(error.message);
-  }
-}
-
 export default {
   createCifraController,
   getAllCifraController,
   getCifraByIdController,
   updateCifraController,
   deleteCifraController,
-  searchCifraController,
-  getCifraByCategoriaController,
 };

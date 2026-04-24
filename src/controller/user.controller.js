@@ -221,6 +221,24 @@ async function searchUsersController(req, res) {
   }
 }
 
+async function toggleFavoritoController(req, res) {
+  try {
+    const favoritos = await userService.toggleFavoritoService(req.userId, req.params.cifraId);
+    return res.status(200).json({ favoritos });
+  } catch (error) {
+    return res.status(400).json({ message: error.message });
+  }
+}
+
+async function getFavoritosController(req, res) {
+  try {
+    const favoritos = await userService.getFavoritosService(req.userId);
+    return res.status(200).json({ favoritos });
+  } catch (error) {
+    return res.status(400).json({ message: error.message });
+  }
+}
+
 export default {
   createUserController,
   getAllUserController,
@@ -231,4 +249,6 @@ export default {
   uploadAvatar,
   refreshAvatarUrl,
   searchUsersController,
+  toggleFavoritoController,
+  getFavoritosController,
 };

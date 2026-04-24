@@ -5,29 +5,12 @@ import cifraController from "../controller/cifra.controller.js";
 const cifraRouter = Router();
 
 // Rotas públicas (não requerem autenticação)
-cifraRouter.get("/search", cifraController.searchCifraController);
-cifraRouter.get(
-  "/categoria/:categoria",
-  cifraController.getCifraByCategoriaController,
-);
 cifraRouter.get("/:id", cifraController.getCifraByIdController);
 cifraRouter.get("/", cifraController.getAllCifraController);
 
 // Rotas protegidas (requerem autenticação)
-cifraRouter.post(
-  "/create",
-  authMiddleware,
-  cifraController.createCifraController,
-);
-cifraRouter.patch(
-  "/update/:id",
-  authMiddleware,
-  cifraController.updateCifraController,
-);
-cifraRouter.delete(
-  "/delete/:id",
-  authMiddleware,
-  cifraController.deleteCifraController,
-);
+cifraRouter.post("/create", authMiddleware, cifraController.createCifraController);
+cifraRouter.patch("/update/:id", authMiddleware, cifraController.updateCifraController);
+cifraRouter.delete("/delete/:id", authMiddleware, cifraController.deleteCifraController);
 
 export default cifraRouter;

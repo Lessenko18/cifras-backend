@@ -407,6 +407,21 @@ async function getPlaylistById(id, userId, isAdmin = false) {
   return playlist;
 }
 
+async function getPlaylistSharedEmailsService(playlistId, userId, isAdmin = false) {
+  const playlist = await playlistRepositories.getPlaylistByIdRepository(
+    playlistId,
+    userId,
+    isAdmin,
+  );
+  if (!playlist) throw new Error("Playlist não encontrada");
+
+  const sharedIds = (playlist.sharedWith || []).filter(Boolean);
+  if (sharedIds.length === 0) return { emails: [] };
+
+  const users = await userRepositories.findUsersByIdList(sharedIds);
+  return { emails: users.map((u) => u.email).filter(Boolean) };
+}
+
 async function sharePlaylistService(
   playlistId,
   emails,
@@ -506,6 +521,7 @@ export default {
   createPlaylistService,
   getAllPlaylistService,
   getPlaylistById,
+  getPlaylistSharedEmailsService,
   updatePlaylistService,
   deletePlaylistService,
   getPlaylistViewService,

@@ -11,6 +11,11 @@ playlistRouter.get(
   playlistController.getPlaylistViewController,
 );
 playlistRouter.get(
+  "/:id/shares",
+  authMiddleware,
+  playlistController.getPlaylistSharesController,
+);
+playlistRouter.get(
   "/:id",
   authMiddleware,
   playlistController.getPlaylistByIdController,

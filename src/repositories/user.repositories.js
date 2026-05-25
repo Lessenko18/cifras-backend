@@ -40,6 +40,10 @@ const findUsersByEmailList = async (emails) => {
   return User.find({ email: { $in: emails } }).select("-password");
 };
 
+const findUsersByIdList = async (ids) => {
+  return User.find({ _id: { $in: ids } }).select("email name");
+};
+
 const searchUsersByEmail = async (query) => {
   const safe = escapeRegex(String(query || "").trim());
   const regex = new RegExp(safe, "i");
@@ -79,6 +83,7 @@ export default {
   findUserByEmail,
   findUserByResetToken,
   findUsersByEmailList,
+  findUsersByIdList,
   searchUsersByEmail,
   toggleFavoritoRepository,
   getFavoritosRepository,

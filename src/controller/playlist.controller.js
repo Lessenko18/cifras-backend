@@ -83,6 +83,19 @@ async function getPlaylistByIdController(req, res) {
   }
 }
 
+async function getPlaylistSharesController(req, res) {
+  try {
+    const result = await playlistService.getPlaylistSharedEmailsService(
+      req.params.id,
+      req.userId,
+      req.userLevel === "ADM",
+    );
+    return res.status(200).send(result);
+  } catch (error) {
+    return res.status(400).send(error.message);
+  }
+}
+
 async function sharePlaylistController(req, res) {
   try {
     const result = await playlistService.sharePlaylistService(
@@ -115,6 +128,7 @@ export default {
   createPlaylistController,
   getAllPlaylistController,
   getPlaylistByIdController,
+  getPlaylistSharesController,
   updatePlaylistController,
   deletePlaylistController,
   getPlaylistViewController,

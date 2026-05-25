@@ -4,7 +4,7 @@ import playlistController from "../controller/playlist.controller.js";
 
 const playlistRouter = Router();
 
-// Rotas protegidas (playlists são pessoais)
+// Rotas com sub-segmentos devem vir ANTES de /:id para evitar captura prematura
 playlistRouter.get(
   "/:id/view",
   authMiddleware,
@@ -16,14 +16,14 @@ playlistRouter.get(
   playlistController.getPlaylistSharesController,
 );
 playlistRouter.get(
-  "/:id",
-  authMiddleware,
-  playlistController.getPlaylistByIdController,
-);
-playlistRouter.get(
   "/",
   authMiddleware,
   playlistController.getAllPlaylistController,
+);
+playlistRouter.get(
+  "/:id",
+  authMiddleware,
+  playlistController.getPlaylistByIdController,
 );
 
 playlistRouter.post(

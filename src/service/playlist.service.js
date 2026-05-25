@@ -404,7 +404,15 @@ async function getPlaylistById(id, userId, isAdmin = false) {
   );
   if (!playlist) throw new Error("Playlist não encontrada");
 
-  return playlist;
+  const sharedIds = (playlist.sharedWith || []).filter(Boolean);
+  let sharedEmails = [];
+  if (sharedIds.length > 0) {
+    const users = await userRepositories.findUsersByIdList(sharedIds);
+    sharedEmails = users.map((u) => u.email).filter(Boolean);
+  }
+
+  const playlistObj = playlist.toObject ? playlist.toObject() : { ...playlist };
+  return { ...playlistObj, sharedEmails };
 }
 
 async function getPlaylistSharedEmailsService(playlistId, userId, isAdmin = false) {

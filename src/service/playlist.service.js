@@ -454,6 +454,8 @@ async function sharePlaylistService(
   };
 }
 
+const OBJECT_ID_PATTERN = /^[a-f\d]{24}$/i;
+
 async function unsharePlaylistService(
   playlistId,
   emails,
@@ -467,25 +469,36 @@ async function unsharePlaylistService(
   );
   if (!playlist) throw new Error("Playlist não encontrada");
 
-  const normalizedEmails = emails
-    .map((email) => String(email).trim().toLowerCase())
-    .filter(Boolean);
+  const normalizedValues = emails.map((v) => String(v).trim()).filter(Boolean);
 
-  const users = await userRepositories.findUsersByEmailList(normalizedEmails);
-  const userIds = users.map((user) => user._id);
+  // Raw ObjectIds belong to deleted users — use them directly for the $pull
+  const rawObjectIds = normalizedValues
+    .filter((v) => OBJECT_ID_PATTERN.test(v))
+    .map((v) => new mongoose.Types.ObjectId(v));
 
-  if (userIds.length === 0) {
+  const emailList = normalizedValues
+    .filter((v) => !OBJECT_ID_PATTERN.test(v))
+    .map((v) => v.toLowerCase());
+
+  let allUserIds = [...rawObjectIds];
+
+  if (emailList.length > 0) {
+    const users = await userRepositories.findUsersByEmailList(emailList);
+    allUserIds = [...allUserIds, ...users.map((u) => u._id)];
+  }
+
+  if (allUserIds.length === 0) {
     throw new Error("Nenhum usuário encontrado com os e-mails fornecidos.");
   }
 
   await playlistRepositories.removeUsersFromSharedWithRepository(
     playlistId,
-    userIds,
+    allUserIds,
   );
 
   return {
     message: "Compartilhamento removido com sucesso",
-    removed: users.map((u) => u.email),
+    removed: emailList,
   };
 }
 

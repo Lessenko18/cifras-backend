@@ -19,6 +19,11 @@ const CifraSchema = new mongoose.Schema({
   banner: {
     type: String,
   },
+  bpm: {
+    type: Number,
+    min: 20,
+    max: 400,
+  },
   categorias: [
     {
       type: mongoose.Schema.Types.ObjectId,

@@ -5,6 +5,8 @@ import cifraController from "../controller/cifra.controller.js";
 const cifraRouter = Router();
 
 // Rotas públicas (não requerem autenticação)
+cifraRouter.get("/insights/home", cifraController.getHomeInsightsController);
+cifraRouter.post("/:id/acesso", cifraController.registerCifraAccessController);
 cifraRouter.get("/:id", cifraController.getCifraByIdController);
 cifraRouter.get("/", cifraController.getAllCifraController);
 

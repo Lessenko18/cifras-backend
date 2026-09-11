@@ -37,13 +37,14 @@ async function deleteCifraController(req, res) {
 
 async function getAllCifraController(req, res) {
   try {
-    const { nome, categorias, favoritos, page, limit } = req.query;
+    const { nome, artista, categorias, favoritos, page, limit } = req.query;
 
     const toArray = (val) =>
       val ? String(val).split(",").map((s) => s.trim()).filter(Boolean) : undefined;
 
     const result = await cifraService.getAllCifraService({
       nome: nome ? String(nome) : undefined,
+      artista: artista ? String(artista) : undefined,
       categorias: toArray(categorias),
       favoritos: toArray(favoritos),
       page: page !== undefined ? Number(page) : 0,
@@ -64,10 +65,34 @@ async function getCifraByIdController(req, res) {
     return res.status(400).send(error.message);
   }
 }
+
+async function registerCifraAccessController(req, res) {
+  try {
+    await cifraService.registerCifraAccess(req.params.id);
+    return res.status(204).send();
+  } catch (error) {
+    return res.status(400).send(error.message);
+  }
+}
+
+async function getHomeInsightsController(req, res) {
+  try {
+    const { limit } = req.query;
+    const result = await cifraService.getHomeInsightsService({
+      limit: limit !== undefined ? Math.min(Number(limit), 20) : 6,
+    });
+    return res.status(200).json(result);
+  } catch (error) {
+    return res.status(400).send(error.message);
+  }
+}
+
 export default {
   createCifraController,
   getAllCifraController,
   getCifraByIdController,
+  registerCifraAccessController,
+  getHomeInsightsController,
   updateCifraController,
   deleteCifraController,
 };

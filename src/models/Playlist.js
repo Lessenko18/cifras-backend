@@ -21,6 +21,10 @@ const PlaylistSchema = new mongoose.Schema({
       ref: "User",
     },
   ],
+  banner: {
+    type: String,
+    default: "",
+  },
 });
 
 const Playlist = mongoose.model("Playlist", PlaylistSchema);

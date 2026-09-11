@@ -16,13 +16,19 @@ const ALLOWED_IMAGE_MIME_TYPES = new Set([
   "image/gif",
 ]);
 
-// Configuração AWS S3 Client (v3)
+// Cliente S3 (v3) — compatível com AWS S3 e com Cloudflare R2.
+// Pra usar R2, defina AWS_S3_ENDPOINT no .env (ex: https://<account_id>.r2.cloudflarestorage.com)
+// e AWS_REGION=auto. Sem AWS_S3_ENDPOINT, continua apontando pra AWS normalmente.
 const s3Client = new S3Client({
   region: process.env.AWS_REGION,
   credentials: {
     accessKeyId: process.env.AWS_ACCESS_KEY_ID,
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
   },
+  ...(process.env.AWS_S3_ENDPOINT && {
+    endpoint: process.env.AWS_S3_ENDPOINT,
+    forcePathStyle: true,
+  }),
 });
 
 // Multer em memória
@@ -58,7 +64,8 @@ export const avatarUploadRateLimit = rateLimit({
 const extractKeyFromAvatarUrl = (avatarUrl) => {
   if (!avatarUrl) return null;
 
-  if (avatarUrl.startsWith("avatars/")) {
+  // Já é uma key crua do S3 (ex: "avatars/uuid.jpg", "playlists/uuid.jpg"), não uma URL absoluta
+  if (!avatarUrl.includes("://")) {
     return avatarUrl;
   }
 
@@ -104,7 +111,7 @@ export const getSignedAvatarUrl = async (key) => {
 };
 
 // Upload para S3 com URL publica - AWS SDK v3
-export const uploadToS3 = async (file) => {
+export const uploadToS3 = async (file, prefix = "avatars") => {
   try {
     if (!file) {
       throw new Error("Nenhum arquivo fornecido");
@@ -115,7 +122,7 @@ export const uploadToS3 = async (file) => {
     }
 
     const detectedType = await assertRealImageContent(file);
-    const key = `avatars/${uuidv4()}.${detectedType.ext}`;
+    const key = `${prefix}/${uuidv4()}.${detectedType.ext}`;
 
     // Upload do arquivo
     const putCommand = new PutObjectCommand({

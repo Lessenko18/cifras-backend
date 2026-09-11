@@ -34,10 +34,25 @@ const CifraSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
   },
-});
+  acessos: {
+    type: Number,
+    default: 0,
+  },
+  acessosMes: {
+    type: Number,
+    default: 0,
+  },
+  acessosMesRef: {
+    type: String,
+    default: "",
+  },
+}, { timestamps: true });
 
 CifraSchema.index({ nome: "text" });
 CifraSchema.index({ categorias: 1 });
+CifraSchema.index({ acessos: -1 });
+CifraSchema.index({ createdAt: -1 });
+CifraSchema.index({ acessosMesRef: 1, acessosMes: -1 });
 
 const Cifra = mongoose.model("Cifra", CifraSchema);
 export default Cifra;

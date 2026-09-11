@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { authMiddleware, denyNonAdm } from "../middlewares/auth.middleware.js";
 import playlistController from "../controller/playlist.controller.js";
+import { upload } from "../middlewares/upload.middleware.js";
 
 const playlistRouter = Router();
 
@@ -29,6 +30,7 @@ playlistRouter.get(
 playlistRouter.post(
   "/create",
   authMiddleware,
+  upload.single("banner"),
   playlistController.createPlaylistController,
 );
 
@@ -47,6 +49,7 @@ playlistRouter.delete(
 playlistRouter.patch(
   "/update/:id",
   authMiddleware,
+  upload.single("banner"),
   playlistController.updatePlaylistController,
 );
 

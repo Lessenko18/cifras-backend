@@ -65,8 +65,8 @@ export async function deleteCifraService(id, requesterContext) {
   };
 }
 
-async function getAllCifraService({ nome, categorias, favoritos, page, limit } = {}) {
-  return cifraRepositories.getAllCifraRepository({ nome, categorias, favoritos, page, limit });
+async function getAllCifraService({ nome, artista, categorias, favoritos, page, limit } = {}) {
+  return cifraRepositories.getAllCifraRepository({ nome, artista, categorias, favoritos, page, limit });
 }
 
 async function getCifraById(id) {
@@ -75,10 +75,28 @@ async function getCifraById(id) {
 
   return cifra;
 }
+
+async function registerCifraAccess(id) {
+  return cifraRepositories.incrementAcessosRepository(id);
+}
+
+async function getHomeInsightsService({ limit = 6 } = {}) {
+  const [maisAcessadasMes, maisAcessadas, novas, artistasMaisAcessados] = await Promise.all([
+    cifraRepositories.getMaisAcessadasMesRepository(limit),
+    cifraRepositories.getMaisAcessadasRepository(limit),
+    cifraRepositories.getNovasRepository(limit),
+    cifraRepositories.getArtistasMaisAcessadosRepository(limit),
+  ]);
+
+  return { maisAcessadasMes, maisAcessadas, novas, artistasMaisAcessados };
+}
+
 export default {
   createCifraService,
   getAllCifraService,
   getCifraById,
   updateCifraService,
   deleteCifraService,
+  registerCifraAccess,
+  getHomeInsightsService,
 };

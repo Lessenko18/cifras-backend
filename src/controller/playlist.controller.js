@@ -1,14 +1,55 @@
 import playlistService from "../service/playlist.service.js";
+import {
+  getSignedAvatarUrl,
+  resolveAvatarKey,
+  uploadToS3,
+} from "../middlewares/upload.middleware.js";
+
+const PLAYLIST_BANNER_PREFIX = "playlists";
+
+const toArray = (val) => {
+  if (val === undefined || val === null || val === "") return undefined;
+  return Array.isArray(val) ? val : [val];
+};
+
+async function resolveBannerUrl(bannerKey) {
+  if (!bannerKey) return null;
+  const key = resolveAvatarKey(bannerKey);
+  if (!key) return null;
+  try {
+    return await getSignedAvatarUrl(key);
+  } catch {
+    return null;
+  }
+}
+
+async function attachBannerUrl(playlist) {
+  if (!playlist) return playlist;
+  const obj = playlist.toObject ? playlist.toObject() : { ...playlist };
+  obj.bannerUrl = await resolveBannerUrl(obj.banner);
+  return obj;
+}
 
 async function createPlaylistController(req, res) {
   try {
+    const payload = {
+      ...req.body,
+      cifras: toArray(req.body.cifras) ?? [],
+      sharedWithEmails: toArray(req.body.sharedWithEmails),
+    };
+
+    if (req.file) {
+      const uploadResult = await uploadToS3(req.file, PLAYLIST_BANNER_PREFIX);
+      payload.banner = uploadResult.Key;
+    }
+
     const playlist = await playlistService.createPlaylistService(
-      req.body,
+      payload,
       req.userId,
     );
-    return res.status(201).send(playlist);
+    return res.status(201).send(await attachBannerUrl(playlist));
   } catch (error) {
-    return res.status(400).send(error.message);
+    return res.status(error?.statusCode || 400).send(error.message);
   }
 }
 
@@ -29,15 +70,26 @@ async function getPlaylistViewController(req, res) {
 async function updatePlaylistController(req, res) {
   const id = req.params.id;
   try {
+    const payload = { ...req.body };
+    if (payload.cifras !== undefined) payload.cifras = toArray(payload.cifras) ?? [];
+    if (payload.sharedWithEmails !== undefined) {
+      payload.sharedWithEmails = toArray(payload.sharedWithEmails);
+    }
+
+    if (req.file) {
+      const uploadResult = await uploadToS3(req.file, PLAYLIST_BANNER_PREFIX);
+      payload.banner = uploadResult.Key;
+    }
+
     const playlist = await playlistService.updatePlaylistService(
       id,
-      req.body,
+      payload,
       req.userId,
       req.userLevel === "ADM",
     );
-    return res.status(200).send(playlist);
+    return res.status(200).send(await attachBannerUrl(playlist));
   } catch (error) {
-    return res.status(400).send(error.message);
+    return res.status(error?.statusCode || 400).send(error.message);
   }
 }
 
@@ -64,7 +116,8 @@ async function getAllPlaylistController(req, res) {
       req.userId,
       req.userLevel === "ADM",
     );
-    return res.status(200).send(playlists);
+    const withBanners = await Promise.all(playlists.map(attachBannerUrl));
+    return res.status(200).send(withBanners);
   } catch (error) {
     return res.status(400).send(error.message);
   }
@@ -77,7 +130,8 @@ async function getPlaylistByIdController(req, res) {
       req.userId,
       req.userLevel === "ADM",
     );
-    return res.status(200).send(playlist);
+    const bannerUrl = await resolveBannerUrl(playlist.banner);
+    return res.status(200).send({ ...playlist, bannerUrl });
   } catch (error) {
     return res.status(400).send(error.message);
   }

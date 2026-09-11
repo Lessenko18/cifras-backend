@@ -7,6 +7,10 @@ import connectDatabase from "./src/database/database.js";
 
 const app = express();
 
+// Necessário na Vercel (e qualquer proxy reverso) pra o Express confiar no
+// header X-Forwarded-For e o express-rate-limit conseguir calcular o IP real.
+app.set("trust proxy", 1);
+
 const defaultDevOrigins = [
   "http://localhost:5173",
   "http://127.0.0.1:5173",

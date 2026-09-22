@@ -25,7 +25,7 @@ const PlaylistSchema = new mongoose.Schema({
     type: String,
     default: "",
   },
-});
+}, { timestamps: true });
 
 const Playlist = mongoose.model("Playlist", PlaylistSchema);
 export default Playlist;

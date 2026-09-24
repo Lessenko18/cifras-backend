@@ -11,6 +11,16 @@ const app = express();
 // header X-Forwarded-For e o express-rate-limit conseguir calcular o IP real.
 app.set("trust proxy", 1);
 
+// API 100% dinâmica e autenticada: desliga ETag e força no-store, senão o
+// navegador (ou o service worker do PWA) revalida por ETag e reaproveita uma
+// resposta antiga de /auth/me em outra sessão/login, escondendo dados novos
+// (ex: avatar recém enviado) atrás de um 304.
+app.set("etag", false);
+app.use((req, res, next) => {
+  res.set("Cache-Control", "no-store");
+  next();
+});
+
 const defaultDevOrigins = [
   "http://localhost:5173",
   "http://127.0.0.1:5173",

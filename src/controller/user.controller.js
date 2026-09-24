@@ -14,10 +14,18 @@ async function createUserController(req, res) {
   }
 }
 
+const withSignedAvatar = async (user) => {
+  const plainUser = user?.toObject ? user.toObject() : user;
+  const key = resolveAvatarKey(plainUser?.avatar);
+  return { ...plainUser, avatar: key ? await getSignedAvatarUrl(key) : null };
+};
+
 async function getAllUserController(req, res) {
   try {
     const users = await userService.getAllUserService();
-    return res.status(200).send(users);
+    const usersList = Array.isArray(users) ? users : [];
+    const signedUsers = await Promise.all(usersList.map(withSignedAvatar));
+    return res.status(200).send(usersList.length ? signedUsers : users);
   } catch (error) {
     return res.status(400).send(error.message);
   }
@@ -35,7 +43,7 @@ async function getUserByIdController(req, res) {
 
   try {
     const user = await userService.getUserById(req.params.id);
-    return res.status(200).send(user);
+    return res.status(200).send(await withSignedAvatar(user));
   } catch (error) {
     return res.status(400).send(error.message);
   }
@@ -61,7 +69,7 @@ async function updateUserController(req, res) {
 
   try {
     const user = await userService.updateUserService(id, payload);
-    return res.status(200).send(user);
+    return res.status(200).send(await withSignedAvatar(user));
   } catch (error) {
     return res.status(400).send(error.message);
   }

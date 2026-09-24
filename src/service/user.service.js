@@ -19,13 +19,12 @@ async function createUserService(data) {
 }
 
 async function updateUserService(id, data) {
-  if (
-    !data.name &&
-    !data.password &&
-    !data.level &&
-    !data.avatar &&
-    !data.email
-  )
+  // Avatar só pode ser alterado via /user/upload-avatar (que já grava a key
+  // correta do R2). Ignora qualquer valor de avatar vindo por esta rota pra
+  // evitar sobrescrever a key com uma URL assinada/quebrada.
+  delete data.avatar;
+
+  if (!data.name && !data.password && !data.level && !data.email)
     throw new Error("Atualize pelo menos 1 campo");
 
   const user = await userRepositories.getUserByIdRepository(id);

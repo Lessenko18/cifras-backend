@@ -1,5 +1,9 @@
 import * as authService from "../service/auth.service.js";
 import userRepository from "../repositories/user.repositories.js";
+import {
+  getSignedAvatarUrl,
+  resolveAvatarKey,
+} from "../middlewares/upload.middleware.js";
 
 const buildAuthCookieOptions = () => {
   const isProduction = process.env.NODE_ENV === "production";
@@ -48,7 +52,15 @@ export async function register(req, res) {
 export async function me(req, res) {
   try {
     const user = await userRepository.getUserByIdRepository(req.userId);
-    return res.status(200).json(user);
+    if (!user) {
+      return res.status(404).json({ message: "Usuário não encontrado" });
+    }
+
+    const userObj = user.toObject ? user.toObject() : user;
+    const key = resolveAvatarKey(userObj.avatar);
+    userObj.avatar = key ? await getSignedAvatarUrl(key) : null;
+
+    return res.status(200).json(userObj);
   } catch (err) {
     return res.status(500).json({ message: "Erro ao buscar usuário logado" });
   }

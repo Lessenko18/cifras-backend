@@ -11,7 +11,7 @@ const CifraSchema = new mongoose.Schema({
   },
   link: {
     type: String,
-    required: true,
+    default: "",
   },
   observacao: {
     type: String,

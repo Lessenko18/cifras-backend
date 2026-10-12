@@ -6,6 +6,13 @@ async function createCifraRepository(data) {
   return Cifra.create(data);
 }
 
+// Mesmo título + mesmo artista, sem diferenciar maiúsculas/minúsculas nem acentos.
+async function findDuplicateCifraRepository(nome, artista = "") {
+  return Cifra.findOne({ nome: nome.trim(), artista: artista.trim() })
+    .collation({ locale: "pt", strength: 1 })
+    .lean();
+}
+
 async function updateCifraRepository(id, data) {
   return Cifra.findOneAndUpdate({ _id: id }, data, { new: true });
 }
@@ -122,6 +129,7 @@ async function getArtistasMaisAcessadosRepository(limit = 6) {
 
 export default {
   createCifraRepository,
+  findDuplicateCifraRepository,
   getAllCifraRepository,
   getCifraByIdRepository,
   updateCifraRepository,

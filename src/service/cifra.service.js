@@ -2,6 +2,16 @@ import cifraRepositories from "../repositories/cifra.repositories.js";
 import playlistRepositories from "../repositories/playlist.repositories.js";
 
 async function createCifraService(data, requesterId) {
+  const duplicate = await cifraRepositories.findDuplicateCifraRepository(
+    String(data?.nome || ""),
+    String(data?.artista || ""),
+  );
+  if (duplicate) {
+    const error = new Error("Já existe uma cifra com esse título e artista");
+    error.statusCode = 409;
+    throw error;
+  }
+
   const payload = {
     ...data,
     createdBy: requesterId,

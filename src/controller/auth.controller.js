@@ -1,0 +1,100 @@
+import * as authService from "../service/auth.service.js";
+import userRepository from "../repositories/user.repositories.js";
+import {
+  getSignedAvatarUrl,
+  resolveAvatarKey,
+} from "../middlewares/upload.middleware.js";
+
+const buildAuthCookieOptions = () => {
+  const isProduction = process.env.NODE_ENV === "production";
+
+  return {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? "none" : "lax",
+    path: "/",
+    maxAge: 1000 * 60 * 60 * 8,
+  };
+};
+
+export async function login(req, res) {
+  const { email, password, remember } = req.body;
+  try {
+    const result = await authService.login(email, password, remember);
+    const cookieOptions = buildAuthCookieOptions();
+
+    if (remember) {
+      cookieOptions.maxAge = 1000 * 60 * 60 * 24 * 30;
+    }
+
+    res.cookie("access_token", result.token, cookieOptions);
+    res.status(200).json(result);
+  } catch (error) {
+    res.status(401).json({ message: error.message });
+  }
+}
+
+export async function register(req, res) {
+  const { name, email, password } = req.body;
+  try {
+    const newUser = await authService.register({
+      name,
+      email,
+      password,
+    });
+    res
+      .status(201)
+      .json({ message: "Usuário criado com sucesso", user: newUser });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+}
+export async function me(req, res) {
+  try {
+    const user = await userRepository.getUserByIdRepository(req.userId);
+    if (!user) {
+      return res.status(404).json({ message: "Usuário não encontrado" });
+    }
+
+    const userObj = user.toObject ? user.toObject() : user;
+    const key = resolveAvatarKey(userObj.avatar);
+    userObj.avatar = key ? await getSignedAvatarUrl(key) : null;
+
+    return res.status(200).json(userObj);
+  } catch (err) {
+    return res.status(500).json({ message: "Erro ao buscar usuário logado" });
+  }
+}
+export function logout(req, res) {
+  const cookieOptions = buildAuthCookieOptions();
+  res.clearCookie("access_token", {
+    ...cookieOptions,
+    maxAge: undefined,
+  });
+
+  return res.status(200).json({
+    message: "Logout realizado com sucesso",
+  });
+}
+
+export async function forgotPassword(req, res) {
+  const { email } = req.body;
+
+  try {
+    const result = await authService.forgotPassword(email);
+    return res.status(200).json(result);
+  } catch (error) {
+    return res.status(error.statusCode || 400).json({ message: error.message });
+  }
+}
+
+export async function resetPassword(req, res) {
+  const { token, newPassword } = req.body;
+
+  try {
+    const result = await authService.resetPassword(token, newPassword);
+    return res.status(200).json(result);
+  } catch (error) {
+    return res.status(400).json({ message: error.message });
+  }
+}

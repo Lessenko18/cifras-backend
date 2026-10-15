@@ -5,7 +5,7 @@ async function createCategoriaRepository(data) {
 }
 
 async function updateCategoriaRepository(id, data) {
-  return Categoria.findOneAndUpdate({ _id: id }, data, { new: true });
+  return Categoria.findOneAndUpdate({ _id: id }, data, { new: true }).populate("parent", "nome");
 }
 
 async function deleteCategoriaRepository(id) {
@@ -13,19 +13,28 @@ async function deleteCategoriaRepository(id) {
 }
 
 async function getAllCategoriaRepository() {
-  return Categoria.find().sort({ _id: -1 });
+  return Categoria.find().populate("parent", "nome").sort({ nome: 1 });
 }
 
 async function searchCategoriaRepository(nome) {
+  if (!nome || nome.trim().length < 1) {
+    return [];
+  }
+
   return Categoria.find({
-    nome: { $regex: nome.nome, $options: "i" }, // case insensitive
+    nome: { $regex: nome.trim(), $options: "i" },
   })
-    .collation({ locale: "pt", strength: 1 }) // ignora acentos
+    .populate("parent", "nome")
+    .collation({ locale: "pt", strength: 1 })
     .sort({ nome: 1 });
 }
 
 async function getCategoriaByIdRepository(id) {
-  return Categoria.findById(id);
+  return Categoria.findById(id).populate("parent", "nome");
+}
+
+async function getChildrenCountRepository(parentId) {
+  return Categoria.countDocuments({ parent: parentId });
 }
 
 export default {
@@ -35,4 +44,5 @@ export default {
   updateCategoriaRepository,
   deleteCategoriaRepository,
   searchCategoriaRepository,
+  getChildrenCountRepository,
 };

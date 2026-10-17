@@ -16,7 +16,7 @@ async function getPlaylistViewRepository(id, userId, isAdmin = false) {
         ],
       };
   return Playlist.findOne(filter)
-    .populate("cifras", "nome observacao")
+    .populate("cifras", "nome artista observacao bpm")
     .select("nome cifras");
 }
 

@@ -1,4 +1,5 @@
 import playlistService from "../service/playlist.service.js";
+import { logAudit, auditLabel } from "../service/audit.service.js";
 import {
   getSignedAvatarUrl,
   resolveAvatarKey,
@@ -30,12 +31,19 @@ async function attachBannerUrl(playlist) {
   return obj;
 }
 
+// Só estes campos vêm do cliente. `criador`, `sharedWith` etc. são definidos
+// pelo servidor; `banner` só entra via upload (senão dava pra apontar pra
+// qualquer arquivo do bucket e receber uma URL assinada dele).
+const asStrings = (val) => (toArray(val) ?? []).filter((v) => typeof v === "string");
+
 async function createPlaylistController(req, res) {
   try {
     const payload = {
-      ...req.body,
-      cifras: toArray(req.body.cifras) ?? [],
-      sharedWithEmails: toArray(req.body.sharedWithEmails),
+      nome: typeof req.body.nome === "string" ? req.body.nome : undefined,
+      cifras: asStrings(req.body.cifras),
+      sharedWithEmails: toArray(req.body.sharedWithEmails)?.filter(
+        (v) => typeof v === "string",
+      ),
     };
 
     if (req.file) {
@@ -70,11 +78,9 @@ async function getPlaylistViewController(req, res) {
 async function updatePlaylistController(req, res) {
   const id = req.params.id;
   try {
-    const payload = { ...req.body };
-    if (payload.cifras !== undefined) payload.cifras = toArray(payload.cifras) ?? [];
-    if (payload.sharedWithEmails !== undefined) {
-      payload.sharedWithEmails = toArray(payload.sharedWithEmails);
-    }
+    const payload = {};
+    if (typeof req.body.nome === "string") payload.nome = req.body.nome;
+    if (req.body.cifras !== undefined) payload.cifras = asStrings(req.body.cifras);
 
     if (req.file) {
       const uploadResult = await uploadToS3(req.file, PLAYLIST_BANNER_PREFIX);
@@ -96,11 +102,13 @@ async function updatePlaylistController(req, res) {
 async function deletePlaylistController(req, res) {
   const id = req.params.id;
   try {
+    const label = await auditLabel("playlist", id);
     await playlistService.deletePlaylistService(
       id,
       req.userId,
       req.userLevel === "ADM",
     );
+    logAudit(req, { action: "playlist_excluida", entity: "playlist", entityId: id, label });
     return res.status(200).send({ message: "Playlist deletada com sucesso" });
   } catch (error) {
     const statusCode = Number.isInteger(error?.status) ? error.status : 400;

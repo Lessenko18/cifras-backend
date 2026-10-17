@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 import Feedback, { FEEDBACK_TIPOS } from "../models/Feedback.js";
+import { logAudit } from "../service/audit.service.js";
 
 const MIN_FILL_TIME_MS = 3000;
 
@@ -89,6 +90,12 @@ async function deleteFeedbackController(req, res) {
   try {
     const feedback = await Feedback.findByIdAndDelete(req.params.id);
     if (!feedback) return res.status(404).json({ message: "Relato não encontrado" });
+    logAudit(req, {
+      action: "relato_excluido",
+      entity: "relato",
+      entityId: req.params.id,
+      label: feedback.mensagem?.slice(0, 80),
+    });
     return res.status(200).json({ message: "Relato excluído" });
   } catch (error) {
     return res.status(400).json({ message: "ID inválido" });

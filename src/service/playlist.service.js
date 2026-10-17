@@ -2,6 +2,7 @@ import playlistRepositories from "../repositories/playlist.repositories.js";
 import userRepositories from "../repositories/user.repositories.js";
 import nodemailer from "nodemailer";
 import mongoose from "mongoose";
+import { escapeHtml } from "../utils/escapeHtml.js";
 
 const SMTP_SEND_TIMEOUT_MS = Number(process.env.SMTP_SEND_TIMEOUT_MS) || 15000;
 const SMTP_VERIFY_TIMEOUT_MS =
@@ -251,7 +252,9 @@ async function sendPlaylistShareEmails({
         to: recipient.email,
         subject,
         text: `Olá${recipient.name ? `, ${recipient.name}` : ""}!\n\nUma playlist foi compartilhada com você no TL Cifras.${playlistName ? `\n\nPlaylist: ${playlistName}` : ""}\n\nAcesse pelo link:\n${playlistLink}`,
-        html: `<p>Olá${recipient.name ? `, ${recipient.name}` : ""}!</p><p>Uma playlist foi compartilhada com você no TL Cifras.</p>${playlistName ? `<p><strong>Playlist:</strong> ${playlistName}</p>` : ""}<p>Acesse pelo link:</p><p><a href="${playlistLink}">${playlistLink}</a></p>`,
+        // Nome da playlist e do usuário são digitados por usuários: escapa pra
+        // ninguém injetar HTML/links de phishing num e-mail enviado pelo app.
+        html: `<p>Olá${recipient.name ? `, ${escapeHtml(recipient.name)}` : ""}!</p><p>Uma playlist foi compartilhada com você no TL Cifras.</p>${playlistName ? `<p><strong>Playlist:</strong> ${escapeHtml(playlistName)}</p>` : ""}<p>Acesse pelo link:</p><p><a href="${escapeHtml(playlistLink)}">${escapeHtml(playlistLink)}</a></p>`,
       }),
       SMTP_SEND_TIMEOUT_MS,
       `Tempo limite excedido ao enviar e-mail para ${recipient.email}`,
@@ -316,6 +319,8 @@ async function getPlaylistViewService(id, userId, isAdmin = false) {
     musicas: (playlist.cifras || []).map((c) => ({
       id: c._id,
       nome: c.nome,
+      artista: c.artista || "",
+      bpm: c.bpm || null,
       descricao: c.observacao || "",
     })),
   };

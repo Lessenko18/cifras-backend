@@ -1,9 +1,39 @@
 import bcrypt from "bcryptjs";
 import userRepositories from "../repositories/user.repositories.js";
 
-async function createUserService(data) {
+const MIN_PASSWORD_LENGTH = 6;
+
+// Só estes campos podem vir do cliente. `level` só entra quando o chamador é
+// ADM (quem chama decide via allowLevel). Nunca repassa o body inteiro ao banco.
+function pickUserFields(data, { allowLevel = false } = {}) {
+  const picked = {};
+  for (const field of ["name", "email", "password"]) {
+    if (typeof data?.[field] === "string") picked[field] = data[field];
+  }
+  if (allowLevel && ["USER", "ADM"].includes(data?.level)) {
+    picked.level = data.level;
+  }
+  return picked;
+}
+
+const MAX_PASSWORD_BYTES = 72; // bcrypt ignora o que passar disso
+
+function assertValidPassword(password) {
+  const value = String(password);
+  if (value.length < MIN_PASSWORD_LENGTH) {
+    throw new Error(`A senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres`);
+  }
+  if (Buffer.byteLength(value) > MAX_PASSWORD_BYTES) {
+    throw new Error("A senha é muito longa (máximo de 72 caracteres)");
+  }
+}
+
+async function createUserService(rawData) {
+  // Chamado apenas por rota restrita a ADM, que pode definir o nível
+  const data = pickUserFields(rawData, { allowLevel: true });
   if (!data.name || !data.password || !data.email)
     throw new Error("Preencha todas as informações");
+  assertValidPassword(data.password);
 
   const normalizedData = {
     ...data,
@@ -18,11 +48,10 @@ async function createUserService(data) {
   return user;
 }
 
-async function updateUserService(id, data) {
-  // Avatar só pode ser alterado via /user/upload-avatar (que já grava a key
-  // correta do R2). Ignora qualquer valor de avatar vindo por esta rota pra
-  // evitar sobrescrever a key com uma URL assinada/quebrada.
-  delete data.avatar;
+async function updateUserService(id, rawData, { allowLevel = false } = {}) {
+  // Allowlist: avatar só muda via /user/upload-avatar (grava a key correta do
+  // R2) e `level` só quando quem edita é ADM. Qualquer outra chave é descartada.
+  const data = pickUserFields(rawData, { allowLevel });
 
   if (!data.name && !data.password && !data.level && !data.email)
     throw new Error("Atualize pelo menos 1 campo");
@@ -32,7 +61,9 @@ async function updateUserService(id, data) {
 
   // Se a senha foi enviada, fazer o hash antes de atualizar
   if (data.password) {
+    assertValidPassword(data.password);
     data.password = await bcrypt.hash(data.password, 10);
+    data.passwordChangedAt = new Date();
   }
 
   const userAt = await userRepositories.updateUserRepository(id, data);
@@ -65,11 +96,10 @@ async function updateUserProfile(userId, updatedData, profileImage) {
   const user = await userRepositories.getUserByIdRepository(userId);
   if (!user) throw new Error("Usuário não encontrado");
 
-  // Remove campos sensíveis para evitar sobrescrever senha/nível por esta rota
-  const { password, level, ...dataWithoutSensitiveFields } = updatedData;
-
-  // Atualiza os dados do usuário (exceto a senha)
-  Object.assign(user, dataWithoutSensitiveFields);
+  // Allowlist: nome e e-mail apenas (nada de senha, nível, avatar, favoritos...)
+  const { name, email } = pickUserFields(updatedData);
+  if (name) user.name = name;
+  if (email) user.email = email;
   if (profileImage) user.avatar = profileImage;
 
   await user.save();

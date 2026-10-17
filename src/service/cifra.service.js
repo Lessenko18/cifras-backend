@@ -1,7 +1,44 @@
 import cifraRepositories from "../repositories/cifra.repositories.js";
 import playlistRepositories from "../repositories/playlist.repositories.js";
 
-async function createCifraService(data, requesterId) {
+// Só estes campos vêm do cliente. Contadores (acessos*), createdBy etc. são
+// controlados pelo servidor — senão dava pra forjar o ranking de mais acessadas.
+function assertHttpUrl(value) {
+  try {
+    const { protocol } = new URL(value);
+    if (protocol === "http:" || protocol === "https:") return;
+  } catch {
+    // cai no erro abaixo
+  }
+  const error = new Error("O link da cifra deve começar com http:// ou https://");
+  error.statusCode = 400;
+  throw error;
+}
+
+function pickCifraFields(data) {
+  const picked = {};
+  for (const field of ["nome", "artista", "link", "observacao"]) {
+    if (typeof data?.[field] === "string") picked[field] = data[field];
+  }
+  // Evita "javascript:" e afins em links que viram <a href> no front
+  if (picked.link !== undefined) {
+    let link = picked.link.trim();
+    // Link colado sem "https://" (ex: "www.cifraclub.com.br/x") ganha o esquema
+    if (link && !/^[a-z][a-z0-9+.-]*:/i.test(link)) link = `https://${link}`;
+    if (link) assertHttpUrl(link);
+    picked.link = link;
+  }
+  if (data?.bpm !== undefined && data.bpm !== null && data.bpm !== "") {
+    picked.bpm = Number(data.bpm);
+  }
+  if (Array.isArray(data?.categorias)) {
+    picked.categorias = data.categorias.filter((c) => typeof c === "string");
+  }
+  return picked;
+}
+
+async function createCifraService(rawData, requesterId) {
+  const data = pickCifraFields(rawData);
   const duplicate = await cifraRepositories.findDuplicateCifraRepository(
     String(data?.nome || ""),
     String(data?.artista || ""),
@@ -40,14 +77,13 @@ async function updateCifraService(id, data, requesterContext) {
     }
   }
 
-  const safeData = { ...data };
-  delete safeData.createdBy;
+  const safeData = pickCifraFields(data);
 
   const cifraAt = await cifraRepositories.updateCifraRepository(id, safeData);
   return cifraAt;
 }
 
-export async function deleteCifraService(id, requesterContext) {
+async function deleteCifraService(id, requesterContext) {
   const cifra = await cifraRepositories.getCifraByIdRepository(id);
   if (!cifra) throw new Error("Cifra não encontrada");
 

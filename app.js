@@ -1,9 +1,12 @@
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
+import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import router from "./src/routes/index.js";
 import connectDatabase from "./src/database/database.js";
+import { allowedOrigins } from "./src/config/cors.js";
+import { sanitizeRequest } from "./src/middlewares/sanitize.middleware.js";
 
 const app = express();
 
@@ -21,26 +24,9 @@ app.use((req, res, next) => {
   next();
 });
 
-const defaultDevOrigins = [
-  "http://localhost:5173",
-  "http://127.0.0.1:5173",
-  "http://localhost:4173",
-  "http://127.0.0.1:4173",
-];
-
-const envAllowedOrigins = [
-  process.env.FRONTEND_URL,
-  process.env.CLIENT_URL,
-  process.env.APP_URL,
-  ...(process.env.CORS_ALLOWED_ORIGINS || "")
-    .split(",")
-    .map((origin) => origin.trim())
-    .filter(Boolean),
-].filter(Boolean);
-
-const allowedOrigins = Array.from(
-  new Set([...envAllowedOrigins, ...defaultDevOrigins]),
-);
+// Cabeçalhos de segurança (HSTS, nosniff, frame-ancestors etc.). CORP cross-origin
+// porque o front (outro domínio) consome esta API.
+app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
 
 const corsOptions = {
   origin:
@@ -60,7 +46,9 @@ app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
 app.use(cookieParser());
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Sem express.urlencoded de propósito: a API só aceita JSON/multipart, o que
+// também impede POSTs de formulário cross-site (CSRF) sem preflight.
+app.use(sanitizeRequest);
 app.use(async (req, res, next) => {
   try {
     await connectDatabase();
@@ -82,7 +70,7 @@ app.use(router);
 app.use((err, req, res, next) => {
   if (err?.code === "LIMIT_FILE_SIZE") {
     return res.status(413).json({
-      message: "Arquivo muito grande. Limite máximo de 200MB.",
+      message: "Arquivo muito grande. Limite máximo de 10MB.",
     });
   }
 

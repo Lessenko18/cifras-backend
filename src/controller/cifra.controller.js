@@ -1,8 +1,15 @@
 import cifraService from "../service/cifra.service.js";
+import { logAudit, auditLabel } from "../service/audit.service.js";
 
 async function createCifraController(req, res) {
   try {
     const cifra = await cifraService.createCifraService(req.body, req.userId);
+    logAudit(req, {
+      action: "cifra_criada",
+      entity: "cifra",
+      entityId: cifra?._id,
+      label: cifra?.nome,
+    });
     return res.status(201).send(cifra);
   } catch (error) {
     return res.status(error?.statusCode || 400).send(error.message);
@@ -16,6 +23,7 @@ async function updateCifraController(req, res) {
       requesterId: req.userId,
       requesterLevel: req.userLevel,
     });
+    logAudit(req, { action: "cifra_editada", entity: "cifra", entityId: id, label: cifra?.nome });
     return res.status(200).send(cifra);
   } catch (error) {
     return res.status(error?.statusCode || 400).send(error.message);
@@ -25,10 +33,12 @@ async function updateCifraController(req, res) {
 async function deleteCifraController(req, res) {
   const id = req.params.id;
   try {
+    const label = await auditLabel("cifra", id);
     await cifraService.deleteCifraService(id, {
       requesterId: req.userId,
       requesterLevel: req.userLevel,
     });
+    logAudit(req, { action: "cifra_excluida", entity: "cifra", entityId: id, label });
     return res.status(200).send({ message: "Cifra deletada com sucesso" });
   } catch (error) {
     return res.status(error?.statusCode || 400).send(error.message);

@@ -7,7 +7,10 @@ async function createUserRepository(data) {
 }
 
 async function updateUserRepository(id, data) {
-  return User.findOneAndUpdate({ _id: id }, data, { new: true }).select("-password");
+  return User.findOneAndUpdate({ _id: id }, data, {
+    new: true,
+    runValidators: true,
+  }).select("-password");
 }
 
 async function deleteUserRepository(id) {

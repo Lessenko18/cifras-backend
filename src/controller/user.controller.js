@@ -1,4 +1,5 @@
 import userService from "../service/user.service.js";
+import { logAudit, auditLabel } from "../service/audit.service.js";
 import {
   getSignedAvatarUrl,
   resolveAvatarKey,
@@ -8,6 +9,13 @@ import {
 async function createUserController(req, res) {
   try {
     const user = await userService.createUserService(req.body);
+    logAudit(req, {
+      action: "usuario_criado",
+      entity: "usuario",
+      entityId: user?._id,
+      label: user?.email,
+      meta: { nivel: user?.level },
+    });
     return res.status(201).send(user);
   } catch (error) {
     return res.status(400).send(error.message);
@@ -61,14 +69,19 @@ async function updateUserController(req, res) {
     });
   }
 
-  const payload = { ...req.body };
-
-  if (!isAdm && Object.prototype.hasOwnProperty.call(payload, "level")) {
-    delete payload.level;
-  }
-
   try {
-    const user = await userService.updateUserService(id, payload);
+    const user = await userService.updateUserService(id, req.body, {
+      allowLevel: isAdm,
+    });
+    // Só os NOMES dos campos alterados (nunca senha/valores sensíveis)
+    const campos = ["name", "email", "password", "level"].filter((f) => req.body?.[f] !== undefined);
+    logAudit(req, {
+      action: "usuario_editado",
+      entity: "usuario",
+      entityId: id,
+      label: user?.email,
+      meta: { campos, ...(isAdm && req.body?.level ? { nivel: req.body.level } : {}) },
+    });
     return res.status(200).send(await withSignedAvatar(user));
   } catch (error) {
     return res.status(400).send(error.message);
@@ -78,7 +91,9 @@ async function updateUserController(req, res) {
 async function deleteUserController(req, res) {
   const id = req.params.id;
   try {
+    const label = await auditLabel("usuario", id);
     await userService.deleteUserService(id);
+    logAudit(req, { action: "usuario_excluido", entity: "usuario", entityId: id, label });
     return res.status(200).send({ message: "Usuário deletado com sucesso" });
   } catch (error) {
     return res.status(400).send(error.message);
@@ -90,7 +105,6 @@ async function updateProfile(req, res) {
 
   try {
     const updatedData = req.body;
-    delete updatedData.level;
 
     let avatarKey;
 
@@ -119,7 +133,7 @@ async function updateProfile(req, res) {
   } catch (error) {
     if (error?.code === "LIMIT_FILE_SIZE") {
       return res.status(413).json({
-        message: "Arquivo muito grande. Limite máximo de 200MB.",
+        message: "Arquivo muito grande. Limite máximo de 10MB.",
       });
     }
 
@@ -129,9 +143,10 @@ async function updateProfile(req, res) {
       });
     }
 
+    console.error("[USER_CONTROLLER]", error);
     return res.status(500).json({
       message: "Erro ao atualizar perfil",
-      error: error.message,
+      error: "Tente novamente em instantes.",
     });
   }
 }
@@ -159,7 +174,7 @@ async function uploadAvatar(req, res) {
     if (error?.code === "LIMIT_FILE_SIZE") {
       return res.status(413).json({
         error: "Arquivo muito grande",
-        message: "Limite máximo permitido é de 200MB",
+        message: "Limite máximo permitido é de 10MB",
       });
     }
 
@@ -170,9 +185,10 @@ async function uploadAvatar(req, res) {
       });
     }
 
+    console.error("[USER_CONTROLLER]", error);
     return res.status(500).json({
       error: "Erro ao fazer upload do avatar",
-      message: error.message,
+      message: "Tente novamente em instantes.",
     });
   }
 }
@@ -195,7 +211,7 @@ async function refreshAvatarUrl(req, res) {
     const signedUrl = await getSignedAvatarUrl(key);
 
     if (user.avatar !== key) {
-      await userService.updateUserService(userId, { avatar: key });
+      await userService.updateUserProfile(userId, {}, key);
     }
 
     return res.status(200).json({
@@ -204,9 +220,10 @@ async function refreshAvatarUrl(req, res) {
       message: "URL do avatar atualizada!",
     });
   } catch (error) {
+    console.error("[USER_CONTROLLER]", error);
     return res.status(500).json({
       error: "Erro ao renovar URL do avatar",
-      message: error.message,
+      message: "Tente novamente em instantes.",
     });
   }
 }
@@ -222,9 +239,10 @@ async function searchUsersController(req, res) {
     const users = await userService.searchUsersByEmail(query);
     return res.status(200).json(users);
   } catch (error) {
+    console.error("[USER_CONTROLLER]", error);
     return res.status(500).json({
       error: "Erro ao buscar usuários",
-      message: error.message,
+      message: "Tente novamente em instantes.",
     });
   }
 }

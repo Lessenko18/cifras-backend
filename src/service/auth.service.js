@@ -3,6 +3,7 @@ import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import nodemailer from "nodemailer";
 import userRepository from "../repositories/user.repositories.js";
+import { escapeHtml } from "../utils/escapeHtml.js";
 
 const RESET_TOKEN_TTL_MS =
   Number(process.env.RESET_PASSWORD_TOKEN_TTL_MS) || 1000 * 60 * 30;
@@ -86,11 +87,30 @@ async function sendResetPasswordEmail({ toEmail, userName, resetLink }) {
     to: toEmail,
     subject: "Redefinição de senha - TL Cifras",
     text: `Olá${userName ? `, ${userName}` : ""}!\n\nRecebemos uma solicitação para redefinir sua senha.\nUse o link abaixo para criar uma nova senha:\n${resetLink}\n\nEste link expira em 30 minutos.\nSe você não solicitou essa alteração, ignore este e-mail.`,
-    html: `<p>Olá${userName ? `, ${userName}` : ""}!</p><p>Recebemos uma solicitação para redefinir sua senha.</p><p>Use o link abaixo para criar uma nova senha:</p><p><a href="${resetLink}">${resetLink}</a></p><p>Este link expira em 30 minutos.</p><p>Se você não solicitou essa alteração, ignore este e-mail.</p>`,
+    html: `<p>Olá${userName ? `, ${escapeHtml(userName)}` : ""}!</p><p>Recebemos uma solicitação para redefinir sua senha.</p><p>Use o link abaixo para criar uma nova senha:</p><p><a href="${escapeHtml(resetLink)}">${escapeHtml(resetLink)}</a></p><p>Este link expira em 30 minutos.</p><p>Se você não solicitou essa alteração, ignore este e-mail.</p>`,
   });
 }
 
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// Hash de uma senha fictícia: usado quando o e-mail não existe, pra o login levar
+// o mesmo tempo nos dois casos (evita descobrir e-mails pelo tempo de resposta).
+const DUMMY_PASSWORD_HASH = "$2b$10$e7OheOtACQ3/djF0qx.wI.UOlBriCNw.DNm29ngpPqc.nZ9YwIs7a";
+const INVALID_CREDENTIALS_MESSAGE = "E-mail ou senha inválidos";
+
 export async function register({ name, email, password }) {
+  if (typeof name !== "string" || name.trim().length < 2 || name.length > 100) {
+    throw new Error("Informe um nome válido");
+  }
+  if (typeof email !== "string" || !EMAIL_PATTERN.test(email.trim()) || email.length > 200) {
+    throw new Error("Informe um e-mail válido");
+  }
+  if (typeof password !== "string" || password.length < 6) {
+    throw new Error("A senha deve ter pelo menos 6 caracteres");
+  }
+  if (Buffer.byteLength(password) > 72) {
+    throw new Error("A senha é muito longa (máximo de 72 caracteres)");
+  }
+
   const userExists = await userRepository.findUserByEmail(email);
 
   if (userExists) {
@@ -117,14 +137,15 @@ export async function register({ name, email, password }) {
 export async function login(email, password, remember = false) {
   const user = await userRepository.findUserByEmail(email);
 
-  if (!user) {
-    throw new Error("Usuário não encontrado");
-  }
+  // Sempre roda o bcrypt (mesmo sem usuário) e devolve a mesma mensagem: assim
+  // não dá pra descobrir quais e-mails existem pela resposta nem pelo tempo.
+  const senhaValida = await bcrypt.compare(
+    String(password ?? ""),
+    user ? user.password : DUMMY_PASSWORD_HASH,
+  );
 
-  const senhaValida = await bcrypt.compare(password, user.password);
-
-  if (!senhaValida) {
-    throw new Error("Senha inválida");
+  if (!user || !senhaValida) {
+    throw new Error(INVALID_CREDENTIALS_MESSAGE);
   }
 
   const token = jwt.sign(
@@ -229,6 +250,10 @@ export async function resetPassword(token, newPassword) {
     throw new Error("A nova senha deve ter pelo menos 6 caracteres");
   }
 
+  if (Buffer.byteLength(String(newPassword)) > 72) {
+    throw new Error("A senha é muito longa (máximo de 72 caracteres)");
+  }
+
   const hashedToken = crypto
     .createHash("sha256")
     .update(String(token))
@@ -243,6 +268,7 @@ export async function resetPassword(token, newPassword) {
 
   await userRepository.updateUserRepository(user._id, {
     password: hashedPassword,
+    passwordChangedAt: new Date(),
     resetPasswordToken: null,
     resetPasswordExpires: null,
   });

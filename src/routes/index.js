@@ -5,6 +5,7 @@ import cifraRouter from "./cifra.router.js";
 import playlistRouter from "./playlist.router.js";
 import authRouter from "./auth.router.js";
 import feedbackRouter from "./feedback.router.js";
+import auditRouter from "./audit.router.js";
 
 const router = Router();
 
@@ -14,5 +15,6 @@ router.use("/categoria", categoriaRouter);
 router.use("/cifra", cifraRouter);
 router.use("/playlist", playlistRouter);
 router.use("/feedback", feedbackRouter);
+router.use("/audit", auditRouter);
 
 export default router;

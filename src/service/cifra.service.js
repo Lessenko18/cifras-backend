@@ -1,6 +1,8 @@
 import cifraRepositories from "../repositories/cifra.repositories.js";
 import playlistRepositories from "../repositories/playlist.repositories.js";
 import { cleanText } from "../utils/cleanText.js";
+import { convertAndVerify } from "../utils/chordpro.js";
+import { hashText, withFreshChordPro } from "../utils/chordproFresh.js";
 
 // Só estes campos vêm do cliente. Contadores (acessos*), createdBy etc. são
 // controlados pelo servidor — senão dava pra forjar o ranking de mais acessadas.
@@ -16,7 +18,7 @@ function assertHttpUrl(value) {
   throw error;
 }
 
-function pickCifraFields(data) {
+export function pickCifraFields(data) {
   const picked = {};
   for (const field of ["nome", "artista", "link", "observacao"]) {
     if (typeof data?.[field] === "string") picked[field] = cleanText(data[field]);
@@ -34,6 +36,13 @@ function pickCifraFields(data) {
   }
   if (Array.isArray(data?.categorias)) {
     picked.categorias = data.categorias.filter((c) => typeof c === "string");
+  }
+  // Se o texto mudou, o ChordPro guardado ficou velho: refaz (e prova) ou descarta.
+  // `observacao` continua sendo a fonte da verdade.
+  if (picked.observacao !== undefined) {
+    const converted = convertAndVerify(picked.observacao);
+    picked.chordpro = converted.ok ? converted.chordpro : null;
+    picked.chordproHash = converted.ok ? hashText(picked.observacao) : null;
   }
   return picked;
 }
@@ -120,7 +129,7 @@ async function getCifraById(id) {
   const cifra = await cifraRepositories.getCifraByIdRepository(id);
   if (!cifra) throw new Error("Cifra não encontrada");
 
-  return cifra;
+  return withFreshChordPro(cifra);
 }
 
 async function registerCifraAccess(id) {

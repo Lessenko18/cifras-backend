@@ -1,5 +1,6 @@
 import cifraService from "../service/cifra.service.js";
 import { logAudit, auditLabel } from "../service/audit.service.js";
+import { sendError } from "../utils/httpError.js";
 
 async function createCifraController(req, res) {
   try {
@@ -12,7 +13,7 @@ async function createCifraController(req, res) {
     });
     return res.status(201).send(cifra);
   } catch (error) {
-    return res.status(error?.statusCode || 400).send(error.message);
+    return sendError(res, error);
   }
 }
 
@@ -26,7 +27,7 @@ async function updateCifraController(req, res) {
     logAudit(req, { action: "cifra_editada", entity: "cifra", entityId: id, label: cifra?.nome });
     return res.status(200).send(cifra);
   } catch (error) {
-    return res.status(error?.statusCode || 400).send(error.message);
+    return sendError(res, error);
   }
 }
 
@@ -41,7 +42,7 @@ async function deleteCifraController(req, res) {
     logAudit(req, { action: "cifra_excluida", entity: "cifra", entityId: id, label });
     return res.status(200).send({ message: "Cifra deletada com sucesso" });
   } catch (error) {
-    return res.status(error?.statusCode || 400).send(error.message);
+    return sendError(res, error);
   }
 }
 
@@ -63,7 +64,7 @@ async function getAllCifraController(req, res) {
 
     return res.status(200).json(result);
   } catch (error) {
-    return res.status(400).send(error.message);
+    return sendError(res, error);
   }
 }
 
@@ -72,7 +73,7 @@ async function getCifraByIdController(req, res) {
     const cifra = await cifraService.getCifraById(req.params.id);
     return res.status(200).send(cifra);
   } catch (error) {
-    return res.status(400).send(error.message);
+    return sendError(res, error);
   }
 }
 
@@ -81,7 +82,7 @@ async function registerCifraAccessController(req, res) {
     await cifraService.registerCifraAccess(req.params.id);
     return res.status(204).send();
   } catch (error) {
-    return res.status(400).send(error.message);
+    return sendError(res, error);
   }
 }
 
@@ -93,7 +94,7 @@ async function getHomeInsightsController(req, res) {
     });
     return res.status(200).json(result);
   } catch (error) {
-    return res.status(400).send(error.message);
+    return sendError(res, error);
   }
 }
 

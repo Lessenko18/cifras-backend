@@ -1,13 +1,12 @@
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
-import nodemailer from "nodemailer";
+import { isMailConfigured, sendMail } from "./mail.service.js";
 import userRepository from "../repositories/user.repositories.js";
 import { escapeHtml } from "../utils/escapeHtml.js";
 
 const RESET_TOKEN_TTL_MS =
   Number(process.env.RESET_PASSWORD_TOKEN_TTL_MS) || 1000 * 60 * 30;
-const SMTP_SEND_TIMEOUT_MS = Number(process.env.SMTP_SEND_TIMEOUT_MS) || 15000;
 const FORGOT_PASSWORD_SUCCESS_MESSAGE =
   "Se o e-mail existir na base, você receberá as instruções para redefinir a senha.";
 
@@ -25,69 +24,15 @@ function buildResetPasswordLink(token) {
   return `${baseUrl}${separator}token=${encodeURIComponent(token)}`;
 }
 
-function createMailTransport() {
-  const host = process.env.SMTP_HOST;
-  const port = Number(process.env.SMTP_PORT) || 587;
-  const secure = process.env.SMTP_SECURE === "true";
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
-
-  if (!host || !user || !pass) {
-    const error = new Error("Serviço de e-mail não configurado");
-    error.statusCode = 500;
-    throw error;
-  }
-
-  return nodemailer.createTransport({
-    host,
-    port,
-    secure,
-    connectionTimeout: Number(process.env.SMTP_CONNECTION_TIMEOUT_MS) || 10000,
-    greetingTimeout: Number(process.env.SMTP_GREETING_TIMEOUT_MS) || 10000,
-    socketTimeout: Number(process.env.SMTP_SOCKET_TIMEOUT_MS) || 15000,
-    auth: {
-      user,
-      pass,
-    },
-  });
-}
-
-async function withTimeout(promise, timeoutMs, timeoutMessage) {
-  let timeoutId;
-
-  const timeoutPromise = new Promise((_, reject) => {
-    timeoutId = setTimeout(() => {
-      const timeoutError = new Error(timeoutMessage);
-      timeoutError.statusCode = 504;
-      reject(timeoutError);
-    }, timeoutMs);
-  });
-
-  try {
-    return await Promise.race([promise, timeoutPromise]);
-  } finally {
-    clearTimeout(timeoutId);
-  }
-}
-
-function hasSmtpConfig() {
-  return Boolean(
-    process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS,
-  );
-}
-
 async function sendResetPasswordEmail({ toEmail, userName, resetLink }) {
-  const transporter = createMailTransport();
-  const from = process.env.SMTP_USER;
-  const replyTo = process.env.SMTP_FROM || process.env.SMTP_USER;
-
-  await transporter.sendMail({
-    from,
-    replyTo,
+  await sendMail({
     to: toEmail,
     subject: "Redefinição de senha - TL Cifras",
     text: `Olá${userName ? `, ${userName}` : ""}!\n\nRecebemos uma solicitação para redefinir sua senha.\nUse o link abaixo para criar uma nova senha:\n${resetLink}\n\nEste link expira em 30 minutos.\nSe você não solicitou essa alteração, ignore este e-mail.`,
     html: `<p>Olá${userName ? `, ${escapeHtml(userName)}` : ""}!</p><p>Recebemos uma solicitação para redefinir sua senha.</p><p>Use o link abaixo para criar uma nova senha:</p><p><a href="${escapeHtml(resetLink)}">${escapeHtml(resetLink)}</a></p><p>Este link expira em 30 minutos.</p><p>Se você não solicitou essa alteração, ignore este e-mail.</p>`,
+  }, {
+    from: process.env.SMTP_USER,
+    replyTo: process.env.SMTP_FROM || process.env.SMTP_USER,
   });
 }
 
@@ -183,7 +128,7 @@ export async function forgotPassword(email) {
 
   const resetLink = buildResetPasswordLink(resetToken);
 
-  if (!hasSmtpConfig()) {
+  if (!isMailConfigured()) {
     if (process.env.NODE_ENV === "production") {
       await userRepository.updateUserRepository(user._id, {
         resetPasswordToken: null,
@@ -203,15 +148,11 @@ export async function forgotPassword(email) {
   }
 
   try {
-    await withTimeout(
-      sendResetPasswordEmail({
-        toEmail: user.email,
-        userName: user.name,
-        resetLink,
-      }),
-      SMTP_SEND_TIMEOUT_MS,
-      "Tempo limite excedido ao enviar e-mail de redefinição",
-    );
+    await sendResetPasswordEmail({
+      toEmail: user.email,
+      userName: user.name,
+      resetLink,
+    });
   } catch (error) {
     console.error("[FORGOT_PASSWORD][SEND_ERROR]", {
       email: user.email,

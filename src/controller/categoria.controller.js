@@ -1,5 +1,6 @@
 import categoriaService from "../service/categoria.service.js";
 import { logAudit, auditLabel } from "../service/audit.service.js";
+import { sendError } from "../utils/httpError.js";
 
 async function createCategoriaController(req, res) {
   try {
@@ -12,7 +13,7 @@ async function createCategoriaController(req, res) {
     });
     return res.status(201).send(categoria);
   } catch (error) {
-    return res.status(400).send(error.message);
+    return sendError(res, error);
   }
 }
 
@@ -31,7 +32,7 @@ async function updateCategoriaController(req, res) {
     });
     return res.status(200).send(categoria);
   } catch (error) {
-    return res.status(400).send(error.message);
+    return sendError(res, error);
   }
 }
 
@@ -43,7 +44,7 @@ async function deleteCategoriaController(req, res) {
     logAudit(req, { action: "categoria_excluida", entity: "categoria", entityId: id, label });
     return res.status(200).send({ message: "Categoria deletada com sucesso" });
   } catch (error) {
-    return res.status(400).send(error.message);
+    return sendError(res, error);
   }
 }
 
@@ -52,7 +53,7 @@ async function getAllCategoriaController(req, res) {
     const categorias = await categoriaService.getAllCategoriaService();
     return res.status(200).send(categorias);
   } catch (error) {
-    return res.status(400).send(error.message);
+    return sendError(res, error);
   }
 }
 
@@ -62,7 +63,7 @@ async function searchCategoriaController(req, res) {
     const categorias = await categoriaService.searchCategoriaService(nome);
     return res.status(200).send(categorias);
   } catch (error) {
-    return res.status(400).send(error.message);
+    return sendError(res, error);
   }
 }
 
@@ -71,7 +72,7 @@ async function getCategoriaByIdController(req, res) {
     const categoria = await categoriaService.getCategoriaById(req.params.id);
     return res.status(200).send(categoria);
   } catch (error) {
-    return res.status(400).send(error.message);
+    return sendError(res, error);
   }
 }
 

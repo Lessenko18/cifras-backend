@@ -2,7 +2,7 @@ import Cifra from "../models/Cifra.js";
 
 // Listagens não precisam do texto da cifra (observacao, que pode ter dezenas de
 // KB por item). Quem abre uma cifra busca por id e recebe o texto completo.
-const LIST_PROJECTION = "-observacao";
+const LIST_PROJECTION = "-observacao -chordpro -chordproHash";
 
 const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 

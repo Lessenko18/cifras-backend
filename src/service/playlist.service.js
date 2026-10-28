@@ -1,13 +1,11 @@
 import playlistRepositories from "../repositories/playlist.repositories.js";
 import userRepositories from "../repositories/user.repositories.js";
-import nodemailer from "nodemailer";
+import { sendMailBatch } from "./mail.service.js";
 import mongoose from "mongoose";
 import { randomBytes } from "node:crypto";
 import { escapeHtml } from "../utils/escapeHtml.js";
+import { freshChordPro } from "../utils/chordproFresh.js";
 
-const SMTP_SEND_TIMEOUT_MS = Number(process.env.SMTP_SEND_TIMEOUT_MS) || 15000;
-const SMTP_VERIFY_TIMEOUT_MS =
-  Number(process.env.SMTP_VERIFY_TIMEOUT_MS) || 12000;
 
 function normalizeComparableId(value, seen = new Set(), depth = 0) {
   if (!value) return "";
@@ -82,201 +80,30 @@ function buildPlaylistLink(playlistId) {
   return `${frontendUrl}/home/playlists/${encodeURIComponent(playlistId)}/ver`;
 }
 
-function createMailTransport() {
-  const host = process.env.SMTP_HOST;
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
-
-  if (!host || !user || !pass) {
-    const missing = [];
-    if (!host) missing.push("SMTP_HOST");
-    if (!user) missing.push("SMTP_USER");
-    if (!pass) missing.push("SMTP_PASS");
-
-    return {
-      transporter: null,
-      reason: "Serviço de e-mail não configurado",
-      missing,
-    };
-  }
-
-  const smtpPort = Number(process.env.SMTP_PORT);
-  const hasCustomPort = Number.isFinite(smtpPort) && smtpPort > 0;
-  const secureFromEnv = process.env.SMTP_SECURE;
-  const hasCustomSecure =
-    typeof secureFromEnv === "string" && secureFromEnv.length > 0;
-
-  const primaryPort = hasCustomPort ? smtpPort : 587;
-  const primarySecure = hasCustomSecure
-    ? secureFromEnv === "true"
-    : primaryPort === 465;
-
-  const fallbackPort = primaryPort === 465 ? 587 : 465;
-  const fallbackSecure = fallbackPort === 465;
-  const fallbackEnabled = process.env.SMTP_FALLBACK_ENABLED !== "false";
-
-  const candidates = [{ port: primaryPort, secure: primarySecure }];
-  if (fallbackEnabled) {
-    const alreadyIncluded = candidates.some(
-      (candidate) =>
-        candidate.port === fallbackPort && candidate.secure === fallbackSecure,
-    );
-
-    if (!alreadyIncluded) {
-      candidates.push({ port: fallbackPort, secure: fallbackSecure });
-    }
-  }
-
-  return {
-    transporter: null,
-    reason: null,
-    missing: [],
-    host,
-    user,
-    pass,
-    candidates,
-    connectionTimeout: Number(process.env.SMTP_CONNECTION_TIMEOUT_MS) || 10000,
-    greetingTimeout: Number(process.env.SMTP_GREETING_TIMEOUT_MS) || 10000,
-    socketTimeout: Number(process.env.SMTP_SOCKET_TIMEOUT_MS) || 15000,
-  };
-}
-
-function buildTransport(config, candidate) {
-  return nodemailer.createTransport({
-    host: config.host,
-    port: candidate.port,
-    secure: candidate.secure,
-    connectionTimeout: config.connectionTimeout,
-    greetingTimeout: config.greetingTimeout,
-    socketTimeout: config.socketTimeout,
-    auth: {
-      user: config.user,
-      pass: config.pass,
-    },
-  });
-}
-
-async function resolveWorkingTransport(config) {
-  const attempts = [];
-
-  for (const candidate of config.candidates) {
-    const transporter = buildTransport(config, candidate);
-
-    try {
-      await withTimeout(
-        transporter.verify(),
-        SMTP_VERIFY_TIMEOUT_MS,
-        `Timeout ao verificar SMTP em ${config.host}:${candidate.port}`,
-      );
-
-      return {
-        transporter,
-        attempts,
-        selected: candidate,
-      };
-    } catch (error) {
-      attempts.push({
-        host: config.host,
-        port: candidate.port,
-        secure: candidate.secure,
-        error: error?.message || "Falha na conexão SMTP",
-      });
-    }
-  }
-
-  return {
-    transporter: null,
-    attempts,
-    selected: null,
-  };
-}
-
-async function withTimeout(promise, timeoutMs, timeoutMessage) {
-  let timeoutId;
-
-  const timeoutPromise = new Promise((_, reject) => {
-    timeoutId = setTimeout(() => {
-      reject(new Error(timeoutMessage));
-    }, timeoutMs);
-  });
-
-  try {
-    return await Promise.race([promise, timeoutPromise]);
-  } finally {
-    clearTimeout(timeoutId);
-  }
-}
-
 async function sendPlaylistShareEmails({
   recipients,
   playlistName,
   playlistLink,
 }) {
-  if (!Array.isArray(recipients) || recipients.length === 0) {
-    return {
-      sent: true,
-      failures: [],
-    };
-  }
-
-  const transportConfig = createMailTransport();
-  if (!transportConfig.host || !transportConfig.user || !transportConfig.pass) {
-    return {
-      sent: false,
-      reason: transportConfig.reason,
-      missing: transportConfig.missing,
-    };
-  }
-
-  const transportResolution = await resolveWorkingTransport(transportConfig);
-  if (!transportResolution.transporter) {
-    return {
-      sent: false,
-      reason: "Não foi possível conectar ao servidor SMTP",
-      attempts: transportResolution.attempts,
-      failures: recipients.map((recipient) => ({
-        email: recipient.email,
-        error: "Connection timeout",
-      })),
-    };
-  }
-
-  const transporter = transportResolution.transporter;
-
-  const from = process.env.SMTP_FROM || process.env.SMTP_USER;
   const subject = "Você recebeu uma playlist - TL Cifras";
 
-  const sendPromises = recipients.map((recipient) =>
-    withTimeout(
-      transporter.sendMail({
-        from,
-        to: recipient.email,
-        subject,
-        text: `Olá${recipient.name ? `, ${recipient.name}` : ""}!\n\nUma playlist foi compartilhada com você no TL Cifras.${playlistName ? `\n\nPlaylist: ${playlistName}` : ""}\n\nAcesse pelo link:\n${playlistLink}`,
-        // Nome da playlist e do usuário são digitados por usuários: escapa pra
-        // ninguém injetar HTML/links de phishing num e-mail enviado pelo app.
-        html: `<p>Olá${recipient.name ? `, ${escapeHtml(recipient.name)}` : ""}!</p><p>Uma playlist foi compartilhada com você no TL Cifras.</p>${playlistName ? `<p><strong>Playlist:</strong> ${escapeHtml(playlistName)}</p>` : ""}<p>Acesse pelo link:</p><p><a href="${escapeHtml(playlistLink)}">${escapeHtml(playlistLink)}</a></p>`,
-      }),
-      SMTP_SEND_TIMEOUT_MS,
-      `Tempo limite excedido ao enviar e-mail para ${recipient.email}`,
-    ),
-  );
+  const messages = (recipients || []).map((recipient) => ({
+    to: recipient.email,
+    subject,
+    text: `Olá${recipient.name ? `, ${recipient.name}` : ""}!
 
-  const results = await Promise.allSettled(sendPromises);
-  const failures = results
-    .map((result, index) => ({ result, recipient: recipients[index] }))
-    .filter(({ result }) => result.status === "rejected")
-    .map(({ result, recipient }) => ({
-      email: recipient.email,
-      error: result.reason?.message || "Falha ao enviar e-mail",
-    }));
+Uma playlist foi compartilhada com você no TL Cifras.${playlistName ? `
 
-  return {
-    sent: failures.length < recipients.length,
-    failures,
-    attempts: transportResolution.attempts,
-    selectedTransport: transportResolution.selected,
-  };
+Playlist: ${playlistName}` : ""}
+
+Acesse pelo link:
+${playlistLink}`,
+    // Nome da playlist e do usuário são digitados por usuários: escapa pra
+    // ninguém injetar HTML/links de phishing num e-mail enviado pelo app.
+    html: `<p>Olá${recipient.name ? `, ${escapeHtml(recipient.name)}` : ""}!</p><p>Uma playlist foi compartilhada com você no TL Cifras.</p>${playlistName ? `<p><strong>Playlist:</strong> ${escapeHtml(playlistName)}</p>` : ""}<p>Acesse pelo link:</p><p><a href="${escapeHtml(playlistLink)}">${escapeHtml(playlistLink)}</a></p>`,
+  }));
+
+  return sendMailBatch(messages);
 }
 
 async function createPlaylistService(data, userId) {
@@ -329,6 +156,7 @@ async function getPlaylistViewService(id, userId, isAdmin = false) {
       artista: c.artista || "",
       bpm: c.bpm || null,
       descricao: c.observacao || "",
+      chordpro: freshChordPro(c),
     })),
   };
 }
@@ -371,6 +199,7 @@ function mapPublicMusicas(playlist) {
     artista: c.artista || "",
     bpm: c.bpm || null,
     descricao: c.observacao || "",
+    chordpro: freshChordPro(c),
   }));
 }
 

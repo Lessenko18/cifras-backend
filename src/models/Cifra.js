@@ -16,6 +16,17 @@ const CifraSchema = new mongoose.Schema({
   observacao: {
     type: String,
   },
+  // Mesma cifra em ChordPro ("[C]Deve haver um [G]lugar"), gerada e VERIFICADA a partir
+  // de `observacao` (que continua sendo o original e nunca é apagado). Ausente = ainda
+  // não convertida ou não passou na verificação; nesse caso vale `observacao`.
+  chordpro: {
+    type: String,
+  },
+  // Hash do texto (`observacao`) de que o `chordpro` foi gerado. A API só entrega o
+  // ChordPro se o hash ainda bater com o texto atual (ver utils/chordproFresh.js).
+  chordproHash: {
+    type: String,
+  },
   banner: {
     type: String,
   },

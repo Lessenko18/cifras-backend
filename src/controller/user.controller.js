@@ -5,6 +5,7 @@ import {
   resolveAvatarKey,
   uploadToS3,
 } from "../middlewares/upload.middleware.js";
+import { sendError } from "../utils/httpError.js";
 
 async function createUserController(req, res) {
   try {
@@ -18,7 +19,7 @@ async function createUserController(req, res) {
     });
     return res.status(201).send(user);
   } catch (error) {
-    return res.status(400).send(error.message);
+    return sendError(res, error);
   }
 }
 
@@ -35,7 +36,7 @@ async function getAllUserController(req, res) {
     const signedUsers = await Promise.all(usersList.map(withSignedAvatar));
     return res.status(200).send(usersList.length ? signedUsers : users);
   } catch (error) {
-    return res.status(400).send(error.message);
+    return sendError(res, error);
   }
 }
 
@@ -53,7 +54,7 @@ async function getUserByIdController(req, res) {
     const user = await userService.getUserById(req.params.id);
     return res.status(200).send(await withSignedAvatar(user));
   } catch (error) {
-    return res.status(400).send(error.message);
+    return sendError(res, error);
   }
 }
 
@@ -84,7 +85,7 @@ async function updateUserController(req, res) {
     });
     return res.status(200).send(await withSignedAvatar(user));
   } catch (error) {
-    return res.status(400).send(error.message);
+    return sendError(res, error);
   }
 }
 
@@ -96,7 +97,7 @@ async function deleteUserController(req, res) {
     logAudit(req, { action: "usuario_excluido", entity: "usuario", entityId: id, label });
     return res.status(200).send({ message: "Usuário deletado com sucesso" });
   } catch (error) {
-    return res.status(400).send(error.message);
+    return sendError(res, error);
   }
 }
 

@@ -1,5 +1,6 @@
 import cifraRepositories from "../repositories/cifra.repositories.js";
 import playlistRepositories from "../repositories/playlist.repositories.js";
+import { cleanText } from "../utils/cleanText.js";
 
 // Só estes campos vêm do cliente. Contadores (acessos*), createdBy etc. são
 // controlados pelo servidor — senão dava pra forjar o ranking de mais acessadas.
@@ -18,7 +19,7 @@ function assertHttpUrl(value) {
 function pickCifraFields(data) {
   const picked = {};
   for (const field of ["nome", "artista", "link", "observacao"]) {
-    if (typeof data?.[field] === "string") picked[field] = data[field];
+    if (typeof data?.[field] === "string") picked[field] = cleanText(data[field]);
   }
   // Evita "javascript:" e afins em links que viram <a href> no front
   if (picked.link !== undefined) {

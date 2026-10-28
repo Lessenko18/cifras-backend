@@ -1,9 +1,20 @@
 import { Router } from "express";
+import rateLimit from "express-rate-limit";
 import { authMiddleware, denyNonAdm } from "../middlewares/auth.middleware.js";
 import playlistController from "../controller/playlist.controller.js";
 import { upload } from "../middlewares/upload.middleware.js";
 
 const playlistRouter = Router();
+
+// Link público (sem login): limitado por IP e declarado antes de /:id
+const publicLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 60,
+  standardHeaders: false,
+  legacyHeaders: false,
+  message: { message: "Muitas requisições. Tente novamente em instantes." },
+});
+playlistRouter.get("/public/:slug", publicLimiter, playlistController.getPublicPlaylistController);
 
 // Rotas com sub-segmentos devem vir ANTES de /:id para evitar captura prematura
 playlistRouter.get(
@@ -32,6 +43,15 @@ playlistRouter.post(
   authMiddleware,
   upload.single("banner"),
   playlistController.createPlaylistController,
+);
+
+playlistRouter.post("/:id/public", authMiddleware, playlistController.setPublicLinkController);
+playlistRouter.delete("/:id/public", authMiddleware, playlistController.setPublicLinkController);
+
+playlistRouter.patch(
+  "/:id/tom",
+  authMiddleware,
+  playlistController.setPlaylistTomController,
 );
 
 playlistRouter.post(

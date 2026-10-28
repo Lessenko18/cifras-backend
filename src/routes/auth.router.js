@@ -28,12 +28,20 @@ const forgotPasswordLimiter = rateLimit({
   message: { message: "Muitas solicitações. Tente novamente em 15 minutos." },
 });
 
+const resetPasswordLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Muitas tentativas. Tente novamente em 15 minutos." },
+});
+
 const router = Router();
 
 router.post("/login", loginLimiter, authController.login);
 router.post("/register", registerLimiter, authController.register);
 router.post("/forgot-password", forgotPasswordLimiter, authController.forgotPassword);
-router.post("/reset-password", authController.resetPassword);
+router.post("/reset-password", resetPasswordLimiter, authController.resetPassword);
 router.get("/me", authMiddleware, authController.me);
 router.post("/logout", authMiddleware, logout);
 

@@ -2,6 +2,7 @@ import playlistRepositories from "../repositories/playlist.repositories.js";
 import userRepositories from "../repositories/user.repositories.js";
 import nodemailer from "nodemailer";
 import mongoose from "mongoose";
+import { randomBytes } from "node:crypto";
 import { escapeHtml } from "../utils/escapeHtml.js";
 
 const SMTP_SEND_TIMEOUT_MS = Number(process.env.SMTP_SEND_TIMEOUT_MS) || 15000;
@@ -316,6 +317,12 @@ async function getPlaylistViewService(id, userId, isAdmin = false) {
   if (!playlist) throw new Error("Playlist não encontrada");
   return {
     nome: playlist.nome,
+    toms: Object.fromEntries(playlist.toms || []),
+    dataEvento: playlist.dataEvento || null,
+    // só o dono (ou ADM) gerencia o link público
+    podeCompartilharLink: isAdmin || isSameId(playlist.criador, userId),
+    publicSlug:
+      isAdmin || isSameId(playlist.criador, userId) ? playlist.publicSlug || null : null,
     musicas: (playlist.cifras || []).map((c) => ({
       id: c._id,
       nome: c.nome,
@@ -339,6 +346,56 @@ async function updatePlaylistService(id, data, userId, isAdmin = false) {
     isAdmin,
   );
   return playlistAt;
+}
+
+async function setPlaylistTomService(id, cifraId, semitones, userId, isAdmin = false) {
+  if (!mongoose.isValidObjectId(id) || !mongoose.isValidObjectId(cifraId)) {
+    throw createServiceError("Identificador inválido", 400);
+  }
+  if (!Number.isInteger(semitones) || semitones < -11 || semitones > 11) {
+    throw createServiceError("Tom inválido", 400);
+  }
+  const playlist = await playlistRepositories.getPlaylistByIdForReadRepository(id, userId, isAdmin);
+  if (!playlist) throw createServiceError("Playlist não encontrada", 404);
+  if (!playlist.cifras.some((c) => isSameId(c, cifraId))) {
+    throw createServiceError("Cifra não pertence à playlist", 400);
+  }
+  const updated = await playlistRepositories.setTomRepository(id, cifraId, semitones, userId, isAdmin);
+  return { toms: Object.fromEntries(updated?.toms || []) };
+}
+
+function mapPublicMusicas(playlist) {
+  return (playlist.cifras || []).map((c) => ({
+    id: c._id,
+    nome: c.nome,
+    artista: c.artista || "",
+    bpm: c.bpm || null,
+    descricao: c.observacao || "",
+  }));
+}
+
+async function getPublicPlaylistService(slug) {
+  if (!/^[A-Za-z0-9_-]{8,40}$/.test(slug)) {
+    throw createServiceError("Playlist não encontrada", 404);
+  }
+  const playlist = await playlistRepositories.getPlaylistByPublicSlugRepository(slug);
+  if (!playlist) throw createServiceError("Playlist não encontrada", 404);
+  return {
+    nome: playlist.nome,
+    toms: Object.fromEntries(playlist.toms || []),
+    dataEvento: playlist.dataEvento || null,
+    musicas: mapPublicMusicas(playlist),
+  };
+}
+
+// Liga/desliga o link público. Só o criador (ou ADM) pode.
+async function setPublicLinkService(id, enable, userId, isAdmin = false) {
+  if (!mongoose.isValidObjectId(id)) throw createServiceError("Identificador inválido", 400);
+  const playlist = await playlistRepositories.getPlaylistByIdRepository(id, userId, isAdmin);
+  if (!playlist) throw createServiceError("Playlist não encontrada", 404);
+  const slug = enable ? playlist.publicSlug || randomBytes(9).toString("base64url") : null;
+  await playlistRepositories.setPublicSlugRepository(id, slug);
+  return { publicSlug: slug };
 }
 
 async function deletePlaylistService(id, userId, isAdmin = false) {
@@ -532,6 +589,9 @@ async function unsharePlaylistService(
 
 export default {
   createPlaylistService,
+  getPublicPlaylistService,
+  setPublicLinkService,
+  setPlaylistTomService,
   getAllPlaylistService,
   getPlaylistById,
   getPlaylistSharedEmailsService,

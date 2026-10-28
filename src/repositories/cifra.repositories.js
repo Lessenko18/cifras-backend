@@ -1,5 +1,9 @@
 import Cifra from "../models/Cifra.js";
 
+// Listagens não precisam do texto da cifra (observacao, que pode ter dezenas de
+// KB por item). Quem abre uma cifra busca por id e recebe o texto completo.
+const LIST_PROJECTION = "-observacao";
+
 const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 async function createCifraRepository(data) {
@@ -14,7 +18,7 @@ async function findDuplicateCifraRepository(nome, artista = "") {
 }
 
 async function updateCifraRepository(id, data) {
-  return Cifra.findOneAndUpdate({ _id: id }, data, { new: true });
+  return Cifra.findOneAndUpdate({ _id: id }, data, { new: true, runValidators: true });
 }
 
 async function deleteCifraRepository(id) {
@@ -49,6 +53,7 @@ async function getAllCifraRepository({ nome, artista, categorias, favoritos, pag
 
   const [cifras, total] = await Promise.all([
     Cifra.find(query)
+      .select(LIST_PROJECTION)
       .collation({ locale: "pt", strength: 1 })
       .sort({ nome: 1 })
       .skip(skip)
@@ -89,6 +94,7 @@ async function incrementAcessosRepository(id) {
 
 async function getMaisAcessadasRepository(limit = 6) {
   return Cifra.find({ acessos: { $gt: 0 } })
+    .select(LIST_PROJECTION)
     .sort({ acessos: -1, nome: 1 })
     .limit(limit)
     .lean();
@@ -97,6 +103,7 @@ async function getMaisAcessadasRepository(limit = 6) {
 async function getMaisAcessadasMesRepository(limit = 6) {
   const mesRef = getMesRef();
   return Cifra.find({ acessosMesRef: mesRef, acessosMes: { $gt: 0 } })
+    .select(LIST_PROJECTION)
     .sort({ acessosMes: -1, nome: 1 })
     .limit(limit)
     .lean();
@@ -104,6 +111,7 @@ async function getMaisAcessadasMesRepository(limit = 6) {
 
 async function getNovasRepository(limit = 6) {
   return Cifra.find({})
+    .select(LIST_PROJECTION)
     .sort({ createdAt: -1 })
     .limit(limit)
     .lean();

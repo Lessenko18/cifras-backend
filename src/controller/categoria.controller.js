@@ -1,8 +1,15 @@
 import categoriaService from "../service/categoria.service.js";
+import { logAudit, auditLabel } from "../service/audit.service.js";
 
 async function createCategoriaController(req, res) {
   try {
     const categoria = await categoriaService.createCategoriaService(req.body);
+    logAudit(req, {
+      action: "categoria_criada",
+      entity: "categoria",
+      entityId: categoria?._id,
+      label: categoria?.nome,
+    });
     return res.status(201).send(categoria);
   } catch (error) {
     return res.status(400).send(error.message);
@@ -16,6 +23,12 @@ async function updateCategoriaController(req, res) {
       id,
       req.body
     );
+    logAudit(req, {
+      action: "categoria_editada",
+      entity: "categoria",
+      entityId: id,
+      label: categoria?.nome,
+    });
     return res.status(200).send(categoria);
   } catch (error) {
     return res.status(400).send(error.message);
@@ -25,7 +38,9 @@ async function updateCategoriaController(req, res) {
 async function deleteCategoriaController(req, res) {
   const id = req.params.id;
   try {
+    const label = await auditLabel("categoria", id);
     await categoriaService.deleteCategoriaService(id);
+    logAudit(req, { action: "categoria_excluida", entity: "categoria", entityId: id, label });
     return res.status(200).send({ message: "Categoria deletada com sucesso" });
   } catch (error) {
     return res.status(400).send(error.message);

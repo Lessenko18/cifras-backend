@@ -81,8 +81,14 @@ const extractKeyFromAvatarUrl = (avatarUrl) => {
   }
 };
 
+// Só chaves geradas pelo próprio upload (avatars/uuid.ext, playlists/uuid.ext)
+// recebem URL assinada. Qualquer outro valor (ex: caminho de outro arquivo do
+// bucket gravado por engano ou de propósito) é tratado como "sem imagem".
+const VALID_UPLOAD_KEY = /^(avatars|playlists)\/[A-Za-z0-9-]+\.[a-z0-9]+$/;
+
 export const resolveAvatarKey = (avatarValue) => {
-  return extractKeyFromAvatarUrl(avatarValue);
+  const key = extractKeyFromAvatarUrl(avatarValue);
+  return key && VALID_UPLOAD_KEY.test(key) ? key : null;
 };
 
 const assertRealImageContent = async (file) => {

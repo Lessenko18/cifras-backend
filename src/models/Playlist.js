@@ -25,6 +25,23 @@ const PlaylistSchema = new mongoose.Schema({
     type: String,
     default: "",
   },
+  // Tom salvo por música nesta playlist: { "<cifraId>": semitons (-11..11) }.
+  // Ausente = tom original. Vale para todos que enxergam a playlist.
+  // Data do evento (missa, casamento…), opcional: alimenta "Próximo compromisso"
+  dataEvento: {
+    type: Date,
+  },
+  // Link público somente leitura (/p/:slug). Ausente = privado.
+  publicSlug: {
+    type: String,
+    unique: true,
+    sparse: true,
+  },
+  toms: {
+    type: Map,
+    of: Number,
+    default: {},
+  },
 }, { timestamps: true });
 
 const Playlist = mongoose.model("Playlist", PlaylistSchema);

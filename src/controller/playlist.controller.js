@@ -1,4 +1,5 @@
 import playlistService from "../service/playlist.service.js";
+import { logAudit, auditLabel } from "../service/audit.service.js";
 import {
   getSignedAvatarUrl,
   resolveAvatarKey,
@@ -30,12 +31,30 @@ async function attachBannerUrl(playlist) {
   return obj;
 }
 
+// Só estes campos vêm do cliente. `criador`, `sharedWith` etc. são definidos
+// pelo servidor; `banner` só entra via upload (senão dava pra apontar pra
+// qualquer arquivo do bucket e receber uma URL assinada dele).
+const asStrings = (val) => (toArray(val) ?? []).filter((v) => typeof v === "string");
+
+// "" limpa a data; string ISO válida define; ausente não altera.
+function parseDataEvento(value) {
+  if (value === undefined) return {};
+  if (value === "" || value === null) return { dataEvento: null };
+  const raw = String(value);
+  // "AAAA-MM-DD" vira meio-dia UTC: evita cair no dia anterior no fuso do Brasil
+  const d = new Date(/^\d{4}-\d{2}-\d{2}$/.test(raw) ? `${raw}T12:00:00.000Z` : raw);
+  return Number.isNaN(d.getTime()) ? {} : { dataEvento: d };
+}
+
 async function createPlaylistController(req, res) {
   try {
     const payload = {
-      ...req.body,
-      cifras: toArray(req.body.cifras) ?? [],
-      sharedWithEmails: toArray(req.body.sharedWithEmails),
+      nome: typeof req.body.nome === "string" ? req.body.nome : undefined,
+      cifras: asStrings(req.body.cifras),
+      ...parseDataEvento(req.body.dataEvento),
+      sharedWithEmails: toArray(req.body.sharedWithEmails)?.filter(
+        (v) => typeof v === "string",
+      ),
     };
 
     if (req.file) {
@@ -67,14 +86,51 @@ async function getPlaylistViewController(req, res) {
   }
 }
 
+async function setPlaylistTomController(req, res) {
+  try {
+    const result = await playlistService.setPlaylistTomService(
+      req.params.id,
+      String(req.body?.cifraId ?? ""),
+      req.body?.semitones,
+      req.userId,
+      req.userLevel === "ADM",
+    );
+    return res.status(200).json(result);
+  } catch (error) {
+    return res.status(error.status || 400).json({ message: error.message });
+  }
+}
+
+async function getPublicPlaylistController(req, res) {
+  try {
+    const result = await playlistService.getPublicPlaylistService(String(req.params.slug));
+    return res.status(200).json(result);
+  } catch (error) {
+    return res.status(error.status || 400).json({ message: error.message });
+  }
+}
+
+async function setPublicLinkController(req, res) {
+  try {
+    const result = await playlistService.setPublicLinkService(
+      req.params.id,
+      req.method === "POST",
+      req.userId,
+      req.userLevel === "ADM",
+    );
+    return res.status(200).json(result);
+  } catch (error) {
+    return res.status(error.status || 400).json({ message: error.message });
+  }
+}
+
 async function updatePlaylistController(req, res) {
   const id = req.params.id;
   try {
-    const payload = { ...req.body };
-    if (payload.cifras !== undefined) payload.cifras = toArray(payload.cifras) ?? [];
-    if (payload.sharedWithEmails !== undefined) {
-      payload.sharedWithEmails = toArray(payload.sharedWithEmails);
-    }
+    const payload = {};
+    if (typeof req.body.nome === "string") payload.nome = req.body.nome;
+    if (req.body.cifras !== undefined) payload.cifras = asStrings(req.body.cifras);
+    Object.assign(payload, parseDataEvento(req.body.dataEvento));
 
     if (req.file) {
       const uploadResult = await uploadToS3(req.file, PLAYLIST_BANNER_PREFIX);
@@ -96,11 +152,13 @@ async function updatePlaylistController(req, res) {
 async function deletePlaylistController(req, res) {
   const id = req.params.id;
   try {
+    const label = await auditLabel("playlist", id);
     await playlistService.deletePlaylistService(
       id,
       req.userId,
       req.userLevel === "ADM",
     );
+    logAudit(req, { action: "playlist_excluida", entity: "playlist", entityId: id, label });
     return res.status(200).send({ message: "Playlist deletada com sucesso" });
   } catch (error) {
     const statusCode = Number.isInteger(error?.status) ? error.status : 400;
@@ -180,6 +238,9 @@ async function unsharePlaylistController(req, res) {
 
 export default {
   createPlaylistController,
+  getPublicPlaylistController,
+  setPublicLinkController,
+  setPlaylistTomController,
   getAllPlaylistController,
   getPlaylistByIdController,
   getPlaylistSharesController,

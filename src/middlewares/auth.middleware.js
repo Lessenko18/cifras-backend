@@ -1,10 +1,14 @@
 import jwt from "jsonwebtoken";
 import userRepository from "../repositories/user.repositories.js";
+import { allowedOrigins } from "../config/cors.js";
+
+const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
 export const authMiddleware = async (req, res, next) => {
   const authHeader = req.headers.authorization;
   const tokenFromCookie = req.cookies?.access_token;
   let token = tokenFromCookie;
+  let usingCookie = Boolean(tokenFromCookie);
 
   if (authHeader) {
     const parts = authHeader.split(" ");
@@ -20,6 +24,17 @@ export const authMiddleware = async (req, res, next) => {
     }
 
     token = bearerToken;
+    usingCookie = false;
+  }
+
+  // CSRF: o cookie é enviado automaticamente pelo navegador (SameSite=None),
+  // então em requisições que alteram dados exige Origin conhecido. Quem usa
+  // o header Authorization não é afetado (o header não é enviado por terceiros).
+  if (usingCookie && !SAFE_METHODS.has(req.method)) {
+    const origin = req.headers.origin;
+    if (!origin || !allowedOrigins.includes(origin)) {
+      return res.status(403).json({ message: "Origem não permitida" });
+    }
   }
 
   if (!token) {
@@ -34,6 +49,18 @@ export const authMiddleware = async (req, res, next) => {
       return res
         .status(401)
         .json({ message: "Usuário do token não encontrado" });
+    }
+
+    // Senha trocada/redefinida depois da emissão do token: sessão antiga morre.
+    // (iat é em segundos; compara no mesmo nível pra não invalidar um login
+    // feito no mesmo segundo da troca.)
+    if (
+      user.passwordChangedAt &&
+      decoded.iat < Math.floor(user.passwordChangedAt.getTime() / 1000)
+    ) {
+      return res
+        .status(401)
+        .json({ message: "Sessão expirada. Faça login novamente." });
     }
 
     // Sempre usa dados reais do banco para autorização
@@ -56,14 +83,4 @@ export const denyNonAdm = (req, res, next) => {
   }
 
   return next();
-};
-
-export const authorizeRoles = (...roles) => {
-  return (req, res, next) => {
-    if (!roles.includes(req.userLevel)) {
-      return res.status(403).json({ message: "Acesso negado" });
-    }
-
-    return next();
-  };
 };

@@ -5,6 +5,7 @@ import {
   resolveAvatarKey,
   uploadToS3,
 } from "../middlewares/upload.middleware.js";
+import { sendError } from "../utils/httpError.js";
 
 const PLAYLIST_BANNER_PREFIX = "playlists";
 
@@ -68,7 +69,7 @@ async function createPlaylistController(req, res) {
     );
     return res.status(201).send(await attachBannerUrl(playlist));
   } catch (error) {
-    return res.status(error?.statusCode || 400).send(error.message);
+    return sendError(res, error);
   }
 }
 
@@ -82,7 +83,7 @@ async function getPlaylistViewController(req, res) {
     );
     return res.status(200).send(playlist);
   } catch (error) {
-    return res.status(400).send(error.message);
+    return sendError(res, error);
   }
 }
 
@@ -145,7 +146,7 @@ async function updatePlaylistController(req, res) {
     );
     return res.status(200).send(await attachBannerUrl(playlist));
   } catch (error) {
-    return res.status(error?.statusCode || 400).send(error.message);
+    return sendError(res, error);
   }
 }
 
@@ -177,7 +178,7 @@ async function getAllPlaylistController(req, res) {
     const withBanners = await Promise.all(playlists.map(attachBannerUrl));
     return res.status(200).send(withBanners);
   } catch (error) {
-    return res.status(400).send(error.message);
+    return sendError(res, error);
   }
 }
 
@@ -191,7 +192,7 @@ async function getPlaylistByIdController(req, res) {
     const bannerUrl = await resolveBannerUrl(playlist.banner);
     return res.status(200).send({ ...playlist, bannerUrl });
   } catch (error) {
-    return res.status(400).send(error.message);
+    return sendError(res, error);
   }
 }
 
@@ -204,7 +205,7 @@ async function getPlaylistSharesController(req, res) {
     );
     return res.status(200).send(result);
   } catch (error) {
-    return res.status(400).send(error.message);
+    return sendError(res, error);
   }
 }
 
@@ -218,7 +219,7 @@ async function sharePlaylistController(req, res) {
     );
     return res.status(200).send(result);
   } catch (error) {
-    return res.status(400).send(error.message);
+    return sendError(res, error);
   }
 }
 
@@ -232,7 +233,7 @@ async function unsharePlaylistController(req, res) {
     );
     return res.status(200).send(result);
   } catch (error) {
-    return res.status(400).send(error.message);
+    return sendError(res, error);
   }
 }
 

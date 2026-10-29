@@ -16,7 +16,7 @@ async function getPlaylistViewRepository(id, userId, isAdmin = false) {
         ],
       };
   return Playlist.findOne(filter)
-    .populate("cifras", "nome artista observacao bpm")
+    .populate("cifras", "nome artista observacao bpm chordpro chordproHash")
     .select("nome cifras toms publicSlug criador dataEvento");
 }
 
@@ -72,7 +72,7 @@ async function setTomRepository(id, cifraId, semitones, userId, isAdmin = false)
 
 async function getPlaylistByPublicSlugRepository(slug) {
   return Playlist.findOne({ publicSlug: slug })
-    .populate("cifras", "nome artista observacao bpm")
+    .populate("cifras", "nome artista observacao bpm chordpro chordproHash")
     .select("nome cifras toms dataEvento");
 }
 

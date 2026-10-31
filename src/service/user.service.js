@@ -1,5 +1,8 @@
 import bcrypt from "bcryptjs";
+import { badRequest, notFound } from "../utils/httpError.js";
 import userRepositories from "../repositories/user.repositories.js";
+import favoritoRepositories from "../repositories/favorito.repositories.js";
+import cifraRepositories from "../repositories/cifra.repositories.js";
 
 const MIN_PASSWORD_LENGTH = 6;
 
@@ -21,10 +24,10 @@ const MAX_PASSWORD_BYTES = 72; // bcrypt ignora o que passar disso
 function assertValidPassword(password) {
   const value = String(password);
   if (value.length < MIN_PASSWORD_LENGTH) {
-    throw new Error(`A senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres`);
+    throw badRequest(`A senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres`);
   }
   if (Buffer.byteLength(value) > MAX_PASSWORD_BYTES) {
-    throw new Error("A senha é muito longa (máximo de 72 caracteres)");
+    throw badRequest("A senha é muito longa (máximo de 72 caracteres)");
   }
 }
 
@@ -32,7 +35,7 @@ async function createUserService(rawData) {
   // Chamado apenas por rota restrita a ADM, que pode definir o nível
   const data = pickUserFields(rawData, { allowLevel: true });
   if (!data.name || !data.password || !data.email)
-    throw new Error("Preencha todas as informações");
+    throw badRequest("Preencha todas as informações");
   assertValidPassword(data.password);
 
   const normalizedData = {
@@ -54,10 +57,10 @@ async function updateUserService(id, rawData, { allowLevel = false } = {}) {
   const data = pickUserFields(rawData, { allowLevel });
 
   if (!data.name && !data.password && !data.level && !data.email)
-    throw new Error("Atualize pelo menos 1 campo");
+    throw badRequest("Atualize pelo menos 1 campo");
 
   const user = await userRepositories.getUserByIdRepository(id);
-  if (!user) throw new Error("Usuário não encontrado");
+  if (!user) throw notFound("Usuário não encontrado");
 
   // Se a senha foi enviada, fazer o hash antes de atualizar
   if (data.password) {
@@ -72,8 +75,9 @@ async function updateUserService(id, rawData, { allowLevel = false } = {}) {
 
 async function deleteUserService(id) {
   const user = await userRepositories.getUserByIdRepository(id);
-  if (!user) throw new Error("Usuário não encontrado");
+  if (!user) throw notFound("Usuário não encontrado");
   await userRepositories.deleteUserRepository(id);
+  await favoritoRepositories.deleteFavoritosByUserRepository(id);
   return { message: "Usuário deletado com sucesso" };
 }
 
@@ -86,7 +90,7 @@ async function getAllUserService() {
 
 async function getUserById(id) {
   const user = await userRepositories.getUserByIdRepository(id);
-  if (!user) throw new Error("Usuário não encontrado");
+  if (!user) throw notFound("Usuário não encontrado");
 
   return user;
 }
@@ -94,7 +98,7 @@ async function getUserById(id) {
 // Método para atualizar o perfil do usuário
 async function updateUserProfile(userId, updatedData, profileImage) {
   const user = await userRepositories.getUserByIdRepository(userId);
-  if (!user) throw new Error("Usuário não encontrado");
+  if (!user) throw notFound("Usuário não encontrado");
 
   // Allowlist: nome e e-mail apenas (nada de senha, nível, avatar, favoritos...)
   const { name, email } = pickUserFields(updatedData);
@@ -112,11 +116,12 @@ async function searchUsersByEmail(query) {
 }
 
 async function toggleFavoritoService(userId, cifraId) {
-  return userRepositories.toggleFavoritoRepository(userId, cifraId);
+  if (!(await cifraRepositories.cifraExistsByIdRepository(cifraId))) throw notFound("Cifra não encontrada");
+  return favoritoRepositories.toggleFavoritoRepository(userId, cifraId);
 }
 
 async function getFavoritosService(userId) {
-  return userRepositories.getFavoritosRepository(userId);
+  return favoritoRepositories.listFavoritosRepository(userId);
 }
 
 export default {

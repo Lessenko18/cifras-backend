@@ -1,7 +1,5 @@
-// CÓPIA do Frontend/src/utils/cifraParser.js. Os dois precisam se comportar
-// IGUAL: a migração para ChordPro só é segura se o backend "enxergar" a cifra
-// do mesmo jeito que a tela. Se mudar um, mude o outro (os testes dos dois lados
-// usam os mesmos casos).
+// GERADO por Frontend/scripts/sync-shared.mjs a partir de Frontend/src/utils/cifraParser.js.
+// NÃO edite aqui: edite no Frontend e rode "npm run sync:shared".
 import { cleanCifraText } from "./cleanCifraText.js";
 
 const CHORD_RE =

@@ -1,4 +1,5 @@
 import playlistRepositories from "../repositories/playlist.repositories.js";
+import { AppError } from "../utils/httpError.js";
 import userRepositories from "../repositories/user.repositories.js";
 import { sendMailBatch } from "./mail.service.js";
 import mongoose from "mongoose";
@@ -56,9 +57,8 @@ function isSameId(left, right) {
 }
 
 function createServiceError(message, status) {
-  const error = new Error(message);
-  error.status = status;
-  return error;
+  const codes = { 400: "BAD_REQUEST", 403: "FORBIDDEN", 404: "NOT_FOUND" };
+  return new AppError(message, status, codes[status] || "INTERNAL_ERROR");
 }
 
 function buildPlaylistLink(playlistId) {
@@ -125,7 +125,7 @@ async function createPlaylistService(data, userId) {
       const missing = normalizedEmails.filter(
         (email) => !foundEmails.has(email),
       );
-      throw new Error(`Usuários não encontrados: ${missing.join(", ")}`);
+      throw notFound(`Usuários não encontrados: ${missing.join(", ")}`);
     }
 
     payload.sharedWith = userIds;
@@ -141,7 +141,7 @@ async function getPlaylistViewService(id, userId, isAdmin = false) {
     userId,
     isAdmin,
   );
-  if (!playlist) throw new Error("Playlist não encontrada");
+  if (!playlist) throw notFound("Playlist não encontrada");
   return {
     nome: playlist.nome,
     toms: Object.fromEntries(playlist.toms || []),
@@ -166,7 +166,7 @@ async function updatePlaylistService(id, data, userId, isAdmin = false) {
     userId,
     isAdmin,
   );
-  if (!playlist) throw new Error("Playlist não encontrada");
+  if (!playlist) throw notFound("Playlist não encontrada");
   const playlistAt = await playlistRepositories.updatePlaylistRepository(
     id,
     data,
@@ -293,7 +293,7 @@ async function getPlaylistById(id, userId, isAdmin = false) {
     userId,
     isAdmin,
   );
-  if (!playlist) throw new Error("Playlist não encontrada");
+  if (!playlist) throw notFound("Playlist não encontrada");
 
   const sharedIds = (playlist.sharedWith || []).filter(Boolean);
   let sharedEmails = [];
@@ -312,7 +312,7 @@ async function getPlaylistSharedEmailsService(playlistId, userId, isAdmin = fals
     userId,
     isAdmin,
   );
-  if (!playlist) throw new Error("Playlist não encontrada");
+  if (!playlist) throw notFound("Playlist não encontrada");
 
   const sharedIds = (playlist.sharedWith || []).filter(Boolean);
   if (sharedIds.length === 0) return { emails: [] };
@@ -332,7 +332,7 @@ async function sharePlaylistService(
     userId,
     isAdmin,
   );
-  if (!playlist) throw new Error("Playlist não encontrada");
+  if (!playlist) throw notFound("Playlist não encontrada");
 
   const normalizedEmails = emails
     .map((email) => String(email).trim().toLowerCase())
@@ -342,7 +342,7 @@ async function sharePlaylistService(
   const userIds = users.map((user) => user._id);
 
   if (userIds.length === 0) {
-    throw new Error("Nenhum usuário encontrado com os e-mails fornecidos.");
+    throw notFound("Nenhum usuário encontrado com os e-mails fornecidos.");
   }
 
   await playlistRepositories.addUsersToSharedWithRepository(
@@ -381,7 +381,7 @@ async function unsharePlaylistService(
     userId,
     isAdmin,
   );
-  if (!playlist) throw new Error("Playlist não encontrada");
+  if (!playlist) throw notFound("Playlist não encontrada");
 
   const normalizedValues = emails.map((v) => String(v).trim()).filter(Boolean);
 
@@ -402,7 +402,7 @@ async function unsharePlaylistService(
   }
 
   if (allUserIds.length === 0) {
-    throw new Error("Nenhum usuário encontrado com os e-mails fornecidos.");
+    throw notFound("Nenhum usuário encontrado com os e-mails fornecidos.");
   }
 
   await playlistRepositories.removeUsersFromSharedWithRepository(

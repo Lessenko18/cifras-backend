@@ -65,6 +65,10 @@ async function getAllCifraRepository({ nome, artista, categorias, favoritos, pag
   return { cifras, total, pages: Math.ceil(total / limit), page };
 }
 
+async function cifraExistsByIdRepository(id) {
+  return Boolean(await Cifra.exists({ _id: id }));
+}
+
 async function getCifraByIdRepository(id) {
   return Cifra.findById(id).lean();
 }
@@ -140,6 +144,7 @@ export default {
   findDuplicateCifraRepository,
   getAllCifraRepository,
   getCifraByIdRepository,
+  cifraExistsByIdRepository,
   updateCifraRepository,
   deleteCifraRepository,
   incrementAcessosRepository,

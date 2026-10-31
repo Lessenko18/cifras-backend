@@ -1,3 +1,5 @@
+// GERADO por Frontend/scripts/sync-shared.mjs a partir de Frontend/src/utils/chordpro.js.
+// NÃO edite aqui: edite no Frontend e rode "npm run sync:shared".
 // Conversão entre o formato atual da cifra (acordes numa linha, letra na de baixo)
 // e ChordPro (acorde entre colchetes, colado na palavra: "[C]Deve haver um [G]lugar").
 // Implementação própria, sem biblioteca (a mais popular, chordsheetjs, é GPL).

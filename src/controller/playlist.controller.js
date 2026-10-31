@@ -98,7 +98,7 @@ async function setPlaylistTomController(req, res) {
     );
     return res.status(200).json(result);
   } catch (error) {
-    return res.status(error.status || 400).json({ message: error.message });
+    return sendError(res, error);
   }
 }
 
@@ -107,7 +107,7 @@ async function getPublicPlaylistController(req, res) {
     const result = await playlistService.getPublicPlaylistService(String(req.params.slug));
     return res.status(200).json(result);
   } catch (error) {
-    return res.status(error.status || 400).json({ message: error.message });
+    return sendError(res, error);
   }
 }
 
@@ -121,7 +121,7 @@ async function setPublicLinkController(req, res) {
     );
     return res.status(200).json(result);
   } catch (error) {
-    return res.status(error.status || 400).json({ message: error.message });
+    return sendError(res, error);
   }
 }
 
@@ -162,10 +162,7 @@ async function deletePlaylistController(req, res) {
     logAudit(req, { action: "playlist_excluida", entity: "playlist", entityId: id, label });
     return res.status(200).send({ message: "Playlist deletada com sucesso" });
   } catch (error) {
-    const statusCode = Number.isInteger(error?.status) ? error.status : 400;
-    return res
-      .status(statusCode)
-      .send({ message: error?.message || "Erro ao excluir playlist" });
+    return sendError(res, error);
   }
 }
 

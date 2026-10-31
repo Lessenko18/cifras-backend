@@ -1,5 +1,7 @@
 import cifraRepositories from "../repositories/cifra.repositories.js";
+import { badRequest, conflict, forbidden, notFound } from "../utils/httpError.js";
 import playlistRepositories from "../repositories/playlist.repositories.js";
+import favoritoRepositories from "../repositories/favorito.repositories.js";
 import { cleanText } from "../utils/cleanText.js";
 import { convertAndVerify } from "../utils/chordpro.js";
 import { hashText, withFreshChordPro } from "../utils/chordproFresh.js";
@@ -13,9 +15,7 @@ function assertHttpUrl(value) {
   } catch {
     // cai no erro abaixo
   }
-  const error = new Error("O link da cifra deve começar com http:// ou https://");
-  error.statusCode = 400;
-  throw error;
+  throw badRequest("O link da cifra deve começar com http:// ou https://");
 }
 
 export function pickCifraFields(data) {
@@ -54,9 +54,7 @@ async function createCifraService(rawData, requesterId) {
     String(data?.artista || ""),
   );
   if (duplicate) {
-    const error = new Error("Já existe uma cifra com esse título e artista");
-    error.statusCode = 409;
-    throw error;
+    throw conflict("Já existe uma cifra com esse título e artista");
   }
 
   const payload = {
@@ -70,7 +68,7 @@ async function createCifraService(rawData, requesterId) {
 
 async function updateCifraService(id, data, requesterContext) {
   const cifra = await cifraRepositories.getCifraByIdRepository(id);
-  if (!cifra) throw new Error("Cifra não encontrada");
+  if (!cifra) throw notFound("Cifra não encontrada");
 
   const requesterId = requesterContext?.requesterId;
   const requesterLevel = requesterContext?.requesterLevel;
@@ -79,11 +77,7 @@ async function updateCifraService(id, data, requesterContext) {
     const createdBy = cifra.createdBy?.toString();
 
     if (!createdBy || createdBy !== requesterId) {
-      const error = new Error(
-        "Usuário comum não pode editar cifras criadas por outros usuários",
-      );
-      error.statusCode = 403;
-      throw error;
+      throw forbidden("Usuário comum não pode editar cifras criadas por outros usuários");
     }
   }
 
@@ -95,7 +89,7 @@ async function updateCifraService(id, data, requesterContext) {
 
 async function deleteCifraService(id, requesterContext) {
   const cifra = await cifraRepositories.getCifraByIdRepository(id);
-  if (!cifra) throw new Error("Cifra não encontrada");
+  if (!cifra) throw notFound("Cifra não encontrada");
 
   const requesterId = requesterContext?.requesterId;
   const requesterLevel = requesterContext?.requesterLevel;
@@ -104,15 +98,12 @@ async function deleteCifraService(id, requesterContext) {
     const createdBy = cifra.createdBy?.toString();
 
     if (!createdBy || createdBy !== requesterId) {
-      const error = new Error(
-        "Usuário comum não pode excluir cifras criadas por outros usuários",
-      );
-      error.statusCode = 403;
-      throw error;
+      throw forbidden("Usuário comum não pode excluir cifras criadas por outros usuários");
     }
   }
 
-  const result = await playlistRepositories.removeCifraFromAllPlaylists(id);
+  await playlistRepositories.removeCifraFromAllPlaylists(id);
+  await favoritoRepositories.deleteFavoritosByCifraRepository(id);
 
   await cifraRepositories.deleteCifraRepository(id);
 
@@ -127,7 +118,7 @@ async function getAllCifraService({ nome, artista, categorias, favoritos, page, 
 
 async function getCifraById(id) {
   const cifra = await cifraRepositories.getCifraByIdRepository(id);
-  if (!cifra) throw new Error("Cifra não encontrada");
+  if (!cifra) throw notFound("Cifra não encontrada");
 
   return withFreshChordPro(cifra);
 }

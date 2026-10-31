@@ -1,8 +1,10 @@
 import bcrypt from "bcryptjs";
+import { badRequest, conflict, unauthorized, AppError } from "../utils/httpError.js";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import { isMailConfigured, sendMail } from "./mail.service.js";
 import userRepository from "../repositories/user.repositories.js";
+import { parseOrThrow, registerSchema, resetPasswordSchema } from "../schemas/auth.schema.js";
 import { escapeHtml } from "../utils/escapeHtml.js";
 
 const RESET_TOKEN_TTL_MS =
@@ -36,30 +38,18 @@ async function sendResetPasswordEmail({ toEmail, userName, resetLink }) {
   });
 }
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // Hash de uma senha fictícia: usado quando o e-mail não existe, pra o login levar
 // o mesmo tempo nos dois casos (evita descobrir e-mails pelo tempo de resposta).
 const DUMMY_PASSWORD_HASH = "$2b$10$e7OheOtACQ3/djF0qx.wI.UOlBriCNw.DNm29ngpPqc.nZ9YwIs7a";
 const INVALID_CREDENTIALS_MESSAGE = "E-mail ou senha inválidos";
 
-export async function register({ name, email, password }) {
-  if (typeof name !== "string" || name.trim().length < 2 || name.length > 100) {
-    throw new Error("Informe um nome válido");
-  }
-  if (typeof email !== "string" || !EMAIL_PATTERN.test(email.trim()) || email.length > 200) {
-    throw new Error("Informe um e-mail válido");
-  }
-  if (typeof password !== "string" || password.length < 6) {
-    throw new Error("A senha deve ter pelo menos 6 caracteres");
-  }
-  if (Buffer.byteLength(password) > 72) {
-    throw new Error("A senha é muito longa (máximo de 72 caracteres)");
-  }
+export async function register(input) {
+  const { name, email, password } = parseOrThrow(registerSchema, input);
 
   const userExists = await userRepository.findUserByEmail(email);
 
   if (userExists) {
-    throw new Error("Usuário já existe");
+    throw conflict("Usuário já existe");
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
@@ -90,7 +80,7 @@ export async function login(email, password, remember = false) {
   );
 
   if (!user || !senhaValida) {
-    throw new Error(INVALID_CREDENTIALS_MESSAGE);
+    throw unauthorized(INVALID_CREDENTIALS_MESSAGE);
   }
 
   const token = jwt.sign(
@@ -104,7 +94,7 @@ export async function login(email, password, remember = false) {
 
 export async function forgotPassword(email) {
   if (!email) {
-    throw new Error("E-mail é obrigatório");
+    throw badRequest("E-mail é obrigatório");
   }
 
   const normalizedEmail = String(email).toLowerCase().trim();
@@ -135,9 +125,7 @@ export async function forgotPassword(email) {
         resetPasswordExpires: null,
       });
 
-      const smtpError = new Error("Serviço de e-mail não configurado");
-      smtpError.statusCode = 500;
-      throw smtpError;
+      throw new AppError("Serviço de e-mail não configurado", 500, "MAIL_NOT_CONFIGURED");
     }
 
     console.warn(
@@ -168,32 +156,21 @@ export async function forgotPassword(email) {
       resetPasswordExpires: null,
     });
 
-    const sendEmailError = new Error(
+    throw new AppError(
       "Não foi possível enviar o e-mail de redefinição no momento",
+      error.statusCode || 500,
+      "MAIL_SEND_FAILED",
     );
-    sendEmailError.statusCode = error.statusCode || 500;
-    throw sendEmailError;
   }
 
   return { message: FORGOT_PASSWORD_SUCCESS_MESSAGE };
 }
 
-export async function resetPassword(token, newPassword) {
-  if (!token) {
-    throw new Error("Token é obrigatório");
-  }
-
-  if (!newPassword) {
-    throw new Error("Nova senha é obrigatória");
-  }
-
-  if (String(newPassword).length < 6) {
-    throw new Error("A nova senha deve ter pelo menos 6 caracteres");
-  }
-
-  if (Buffer.byteLength(String(newPassword)) > 72) {
-    throw new Error("A senha é muito longa (máximo de 72 caracteres)");
-  }
+export async function resetPassword(rawToken, rawNewPassword) {
+  const { token, newPassword } = parseOrThrow(resetPasswordSchema, {
+    token: rawToken,
+    newPassword: rawNewPassword,
+  });
 
   const hashedToken = crypto
     .createHash("sha256")
@@ -202,7 +179,7 @@ export async function resetPassword(token, newPassword) {
   const user = await userRepository.findUserByResetToken(hashedToken);
 
   if (!user) {
-    throw new Error("Token inválido ou expirado");
+    throw badRequest("Token inválido ou expirado");
   }
 
   const hashedPassword = await bcrypt.hash(newPassword, 10);

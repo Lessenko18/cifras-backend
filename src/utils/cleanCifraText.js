@@ -1,4 +1,5 @@
-// CÓPIA do Frontend/src/utils/cleanCifraText.js (ver nota em cifraParser.js).
+// GERADO por Frontend/scripts/sync-shared.mjs a partir de Frontend/src/utils/cleanCifraText.js.
+// NÃO edite aqui: edite no Frontend e rode "npm run sync:shared".
 // Cifras copiadas de sites (ex.: Cifra Club) costumam trazer caracteres
 // invisiveis, como o espaco de largura zero (U+200B) no comeco de cada linha.
 // Eles fazem o acorde D virar (U+200B)D, que deixa de ser reconhecido.

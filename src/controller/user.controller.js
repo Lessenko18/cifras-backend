@@ -253,7 +253,7 @@ async function toggleFavoritoController(req, res) {
     const favoritos = await userService.toggleFavoritoService(req.userId, req.params.cifraId);
     return res.status(200).json({ favoritos });
   } catch (error) {
-    return res.status(400).json({ message: error.message });
+    return sendError(res, error);
   }
 }
 
@@ -262,7 +262,7 @@ async function getFavoritosController(req, res) {
     const favoritos = await userService.getFavoritosService(req.userId);
     return res.status(200).json({ favoritos });
   } catch (error) {
-    return res.status(400).json({ message: error.message });
+    return sendError(res, error);
   }
 }
 

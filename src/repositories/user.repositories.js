@@ -56,27 +56,6 @@ const searchUsersByEmail = async (query) => {
     .sort({ email: 1 });
 };
 
-const toggleFavoritoRepository = async (userId, cifraId) => {
-  const user = await User.findById(userId);
-  if (!user) throw new Error("Usuário não encontrado");
-
-  const index = user.favoritos.findIndex((id) => id.toString() === cifraId);
-  if (index === -1) {
-    user.favoritos.push(cifraId);
-  } else {
-    user.favoritos.splice(index, 1);
-  }
-
-  await user.save();
-  return user.favoritos.map((id) => id.toString());
-};
-
-const getFavoritosRepository = async (userId) => {
-  const user = await User.findById(userId).select("favoritos");
-  if (!user) throw new Error("Usuário não encontrado");
-  return user.favoritos.map((id) => id.toString());
-};
-
 export default {
   createUserRepository,
   getAllUserRepository,
@@ -88,6 +67,4 @@ export default {
   findUsersByEmailList,
   findUsersByIdList,
   searchUsersByEmail,
-  toggleFavoritoRepository,
-  getFavoritosRepository,
 };

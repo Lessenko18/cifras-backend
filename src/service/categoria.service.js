@@ -1,4 +1,5 @@
 import categoriaRepositories from "../repositories/categoria.repositories.js";
+import { badRequest, notFound } from "../utils/httpError.js";
 
 async function createCategoriaService(data) {
   const payload = { ...data };
@@ -9,7 +10,7 @@ async function createCategoriaService(data) {
 
 async function updateCategoriaService(id, data) {
   const categoria = await categoriaRepositories.getCategoriaByIdRepository(id);
-  if (!categoria) throw new Error("Categoria não encontrada");
+  if (!categoria) throw notFound("Categoria não encontrada");
 
   const payload = { ...data };
   payload.parent = payload.parent || null;
@@ -17,7 +18,7 @@ async function updateCategoriaService(id, data) {
   if (payload.parent) {
     const childrenCount = await categoriaRepositories.getChildrenCountRepository(id);
     if (childrenCount > 0) {
-      throw new Error("Remova as subcategorias antes de transformar esta categoria em subcategoria.");
+      throw badRequest("Remova as subcategorias antes de transformar esta categoria em subcategoria.");
     }
   }
 
@@ -27,11 +28,11 @@ async function updateCategoriaService(id, data) {
 
 async function deleteCategoriaService(id) {
   const categoria = await categoriaRepositories.getCategoriaByIdRepository(id);
-  if (!categoria) throw new Error("Categoria não encontrada");
+  if (!categoria) throw notFound("Categoria não encontrada");
 
   const childrenCount = await categoriaRepositories.getChildrenCountRepository(id);
   if (childrenCount > 0) {
-    throw new Error("Remova as subcategorias antes de excluir esta categoria.");
+    throw badRequest("Remova as subcategorias antes de excluir esta categoria.");
   }
 
   await categoriaRepositories.deleteCategoriaRepository(id);
@@ -60,7 +61,7 @@ async function searchCategoriaService(nome) {
 
 async function getCategoriaById(id) {
   const categoria = await categoriaRepositories.getCategoriaByIdRepository(id);
-  if (!categoria) throw new Error("Categoria não encontrada");
+  if (!categoria) throw notFound("Categoria não encontrada");
 
   return categoria;
 }

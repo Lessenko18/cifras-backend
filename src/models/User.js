@@ -36,18 +36,6 @@ const UserSchema = new mongoose.Schema({
   avatar: {
     type: String,
   },
-  playlists: [
-    {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Playlist",
-    },
-  ],
-  favoritos: [
-    {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Cifra",
-    },
-  ],
   resetPasswordToken: {
     type: String,
     default: null,

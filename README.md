@@ -175,6 +175,9 @@ O servidor sobe por padrao em http://localhost:3000.
 
 - O projeto possui configuracao para Vercel em `vercel.json`.
 - Em ambiente serverless, a entrada usada no deploy e `app.js`.
+- A hospedagem oficial e a Vercel. `server.js` (`npm run dev` / `npm start`) serve so para rodar como servidor comum.
+- Rate limit: os contadores ficam no MongoDB (colecao `ratelimits`, com indice TTL), porque na Vercel cada requisicao pode cair numa instancia diferente. Se o banco estiver fora, o limite deixa passar (fail-open) e o erro e logado.
+- Sessao em Safari/iOS: para o cookie nao ser bloqueado, coloque front e API no mesmo site (ex.: `tlcifras.com.br` e `api.tlcifras.com.br`) e defina `COOKIE_DOMAIN=.tlcifras.com.br`. Depois atualize `VITE_API_BASE_URL` e a CSP (`connect-src`/`report-uri`) do `Frontend/vercel.json`.
 - Para execucao local em servidor HTTP, utilize `npm run dev`.
 
 ### Como rodar o frontend
@@ -189,7 +192,7 @@ npm run dev
 ## Problemas comuns
 
 - CORS: garanta que o backend permita requests do frontend.
-- 401 constante: verifique se o token esta sendo retornado no login.
+- 401 constante: a sessao vive so no cookie httpOnly `access_token` (o login nao devolve o token no corpo). Confira `withCredentials` no front, o CORS (`credentials: true`) e, em producao, `COOKIE_DOMAIN`/`FRONTEND_URL`.
 - Upload de avatar falha: confira configuracao de S3 no backend.
 
 ## Roadmap

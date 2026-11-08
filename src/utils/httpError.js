@@ -1,3 +1,5 @@
+import { captureError } from "../config/monitoring.js";
+
 // Erros da API.
 //
 // Os services lançam `AppError` (via os atalhos abaixo) com o status HTTP e um
@@ -43,10 +45,16 @@ export function toHttpError(error) {
 }
 
 // Resposta de erro padrão: sempre JSON { message, code }.
+// Erros 5xx também vão para o Sentry (se configurado). Nesse caso a resposta
+// espera o envio terminar, senão a função serverless congelaria antes de enviar.
 export function sendError(res, error) {
   const { status, message, code } = toHttpError(error);
+  const respond = () => res.status(status).json({ message, ...(code ? { code } : {}) });
+
   if (status >= 500) {
     console.error("[UNHANDLED_ERROR]", { message: error?.message, stack: error?.stack });
+    const flushed = captureError(error, res.req);
+    if (flushed) return flushed.then(respond);
   }
-  return res.status(status).json({ message, ...(code ? { code } : {}) });
+  return respond();
 }

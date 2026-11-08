@@ -7,6 +7,9 @@ import router from "./src/routes/index.js";
 import connectDatabase from "./src/database/database.js";
 import { allowedOrigins } from "./src/config/cors.js";
 import { sanitizeRequest } from "./src/middlewares/sanitize.middleware.js";
+import { initMonitoring, captureError } from "./src/config/monitoring.js";
+
+initMonitoring();
 
 const app = express();
 
@@ -59,6 +62,7 @@ app.use(async (req, res, next) => {
       code: error?.code,
       name: error?.name,
     });
+    await captureError(error, req);
 
     return res.status(503).json({
       message: "Serviço temporariamente indisponível. Tente novamente.",
@@ -81,11 +85,12 @@ app.use((err, req, res, next) => {
   return next(err);
 });
 
-app.use((err, req, res, next) => {
+app.use(async (err, req, res, next) => {
   console.error("[UNHANDLED_ERROR]", {
     message: err?.message,
     stack: err?.stack,
   });
+  await captureError(err, req);
 
   return res.status(500).json({ message: "Erro interno do servidor" });
 });

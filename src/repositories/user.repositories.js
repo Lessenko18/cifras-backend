@@ -25,6 +25,11 @@ async function getUserByIdRepository(id) {
   return User.findById(id).select("-password");
 }
 
+// Só para conferir a senha atual (getUserByIdRepository esconde o hash).
+async function getUserWithPasswordRepository(id) {
+  return User.findById(id).select("+password");
+}
+
 const findUserByEmail = async (email) => {
   const normalizedEmail = String(email || "")
     .toLowerCase()
@@ -60,6 +65,7 @@ export default {
   createUserRepository,
   getAllUserRepository,
   getUserByIdRepository,
+  getUserWithPasswordRepository,
   updateUserRepository,
   deleteUserRepository,
   findUserByEmail,

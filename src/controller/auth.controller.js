@@ -9,11 +9,19 @@ import {
 const buildAuthCookieOptions = () => {
   const isProduction = process.env.NODE_ENV === "production";
 
+  // COOKIE_DOMAIN (ex: ".tlcifras.com.br") faz o cookie valer para front e API
+  // quando estão em subdomínios do mesmo site. Com ele, o cookie passa a ser
+  // "first-party" e deixa de ser bloqueado pelo ITP do Safari/iOS, então
+  // SameSite=Lax basta (e é mais seguro que None).
+  const domain = process.env.COOKIE_DOMAIN?.trim() || undefined;
+  const sameSite = isProduction && !domain ? "none" : "lax";
+
   return {
     httpOnly: true,
     secure: isProduction,
-    sameSite: isProduction ? "none" : "lax",
+    sameSite,
     path: "/",
+    ...(domain && { domain }),
     maxAge: 1000 * 60 * 60 * 8,
   };
 };
@@ -28,8 +36,10 @@ export async function login(req, res) {
       cookieOptions.maxAge = 1000 * 60 * 60 * 24 * 30;
     }
 
+    // O JWT vai SÓ no cookie httpOnly: nunca no corpo, para o JS do front (e
+    // qualquer XSS) não conseguir ler nem guardar o token.
     res.cookie("access_token", result.token, cookieOptions);
-    res.status(200).json(result);
+    res.status(200).json({ message: "Login realizado com sucesso" });
   } catch (error) {
     return sendError(res, error);
   }

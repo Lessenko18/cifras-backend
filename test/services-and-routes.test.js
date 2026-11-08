@@ -207,7 +207,11 @@ async function request(server, method, path, { body, token } = {}) {
     },
     body: body ? JSON.stringify(body) : undefined,
   });
-  return { status: res.status, body: await res.json().catch(() => null) };
+  return {
+    status: res.status,
+    body: await res.json().catch(() => null),
+    cookies: res.headers.getSetCookie(),
+  };
 }
 
 function buildApp() {
@@ -269,7 +273,7 @@ test("authMiddleware: ignora o level do token e invalida sessão anterior à tro
   }
 });
 
-test("POST /auth/login: 401 em credenciais ruins e 200 com token nas boas", async () => {
+test("POST /auth/login: 401 em credenciais ruins e 200 com o token só no cookie httpOnly", async () => {
   const hash = await bcrypt.hash("segredo1", 4);
   mock.method(userRepository, "findUserByEmail", async (email) =>
     email === "ana@a.com" ? { _id: VALID_ID, email, level: "USER", password: hash } : null,
@@ -282,7 +286,13 @@ test("POST /auth/login: 401 em credenciais ruins e 200 com token nas boas", asyn
 
     const good = await request(server, "POST", "/auth/login", { body: { email: "ana@a.com", password: "segredo1" } });
     assert.equal(good.status, 200);
-    assert.ok(good.body.token);
+    // O JWT nunca vai no corpo: só no cookie httpOnly
+    assert.equal(good.body.token, undefined);
+    const cookie = good.cookies.find((c) => c.startsWith("access_token="));
+    assert.ok(cookie, "deveria setar o cookie access_token");
+    assert.match(cookie, /HttpOnly/i);
+    const jwtValue = cookie.split(";")[0].split("=")[1];
+    assert.equal(jwt.verify(jwtValue, process.env.JWT_SECRET).id, VALID_ID);
   } finally {
     server.close();
   }

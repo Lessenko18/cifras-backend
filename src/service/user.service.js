@@ -19,6 +19,23 @@ function pickUserFields(data, { allowLevel = false } = {}) {
   return picked;
 }
 
+// Trocar senha ou e-mail da própria conta exige a senha atual: sem isso, quem
+// pegasse uma sessão aberta (aparelho emprestado, token roubado) tomaria a conta.
+// Usa 400 (e não 401) de propósito: o front desloga em qualquer 401.
+async function assertCurrentPassword(userId, currentPassword) {
+  const user = await userRepositories.getUserWithPasswordRepository(userId);
+  const ok =
+    typeof currentPassword === "string" &&
+    currentPassword.length > 0 &&
+    user?.password &&
+    (await bcrypt.compare(currentPassword, user.password));
+  if (!ok) {
+    throw badRequest("Informe a senha atual correta para alterar e-mail ou senha", "INVALID_CURRENT_PASSWORD");
+  }
+}
+
+const sameEmail = (a, b) => String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase();
+
 const MAX_PASSWORD_BYTES = 72; // bcrypt ignora o que passar disso
 
 function assertValidPassword(password) {
@@ -51,7 +68,7 @@ async function createUserService(rawData) {
   return user;
 }
 
-async function updateUserService(id, rawData, { allowLevel = false } = {}) {
+async function updateUserService(id, rawData, { allowLevel = false, requireCurrentPassword = false } = {}) {
   // Allowlist: avatar só muda via /user/upload-avatar (grava a key correta do
   // R2) e `level` só quando quem edita é ADM. Qualquer outra chave é descartada.
   const data = pickUserFields(rawData, { allowLevel });
@@ -61,6 +78,11 @@ async function updateUserService(id, rawData, { allowLevel = false } = {}) {
 
   const user = await userRepositories.getUserByIdRepository(id);
   if (!user) throw notFound("Usuário não encontrado");
+
+  const changesEmail = data.email !== undefined && !sameEmail(data.email, user.email);
+  if (requireCurrentPassword && (data.password || changesEmail)) {
+    await assertCurrentPassword(id, rawData?.currentPassword);
+  }
 
   // Se a senha foi enviada, fazer o hash antes de atualizar
   if (data.password) {
@@ -102,6 +124,9 @@ async function updateUserProfile(userId, updatedData, profileImage) {
 
   // Allowlist: nome e e-mail apenas (nada de senha, nível, avatar, favoritos...)
   const { name, email } = pickUserFields(updatedData);
+  if (email && !sameEmail(email, user.email)) {
+    await assertCurrentPassword(userId, updatedData?.currentPassword);
+  }
   if (name) user.name = name;
   if (email) user.email = email;
   if (profileImage) user.avatar = profileImage;

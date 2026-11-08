@@ -73,6 +73,7 @@ async function updateUserController(req, res) {
   try {
     const user = await userService.updateUserService(id, req.body, {
       allowLevel: isAdm,
+      requireCurrentPassword: isSelfUpdate,
     });
     // Só os NOMES dos campos alterados (nunca senha/valores sensíveis)
     const campos = ["name", "email", "password", "level"].filter((f) => req.body?.[f] !== undefined);

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { authMiddleware, denyNonAdm } from "../middlewares/auth.middleware.js";
 import userController from "../controller/user.controller.js";
+import { createLimiter } from "../middlewares/rateLimit.js";
 import {
   avatarUploadRateLimit,
   upload,
@@ -8,12 +9,21 @@ import {
 
 const userRouter = Router();
 
+// Rotas que conferem a senha atual: limite próprio contra tentativa de adivinhar a senha
+const sensitiveLimiter = createLimiter("user-sensitive", {
+  windowMs: 15 * 60 * 1000,
+  limit: 15,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Muitas tentativas. Tente novamente em 15 minutos." },
+});
+
 // Todas as rotas exigem autenticação
 userRouter.use(authMiddleware);
 
 userRouter.post("/create", denyNonAdm, userController.createUserController);
 
-userRouter.patch("/update/:id", userController.updateUserController);
+userRouter.patch("/update/:id", sensitiveLimiter, userController.updateUserController);
 userRouter.delete(
   "/delete/:id",
   denyNonAdm,
@@ -27,6 +37,7 @@ userRouter.get("/", denyNonAdm, userController.getAllUserController);
 // Atualizar perfil do usuário (com imagem)
 userRouter.put(
   "/profile",
+  sensitiveLimiter,
   upload.single("profileImage"),
   userController.updateProfile,
 );

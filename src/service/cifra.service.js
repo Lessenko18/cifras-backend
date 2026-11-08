@@ -5,6 +5,8 @@ import favoritoRepositories from "../repositories/favorito.repositories.js";
 import { cleanText } from "../utils/cleanText.js";
 import { convertAndVerify } from "../utils/chordpro.js";
 import { hashText, withFreshChordPro } from "../utils/chordproFresh.js";
+import { parseOrThrow } from "../schemas/auth.schema.js";
+import { cifraFieldsSchema } from "../schemas/cifra.schema.js";
 
 // Só estes campos vêm do cliente. Contadores (acessos*), createdBy etc. são
 // controlados pelo servidor — senão dava pra forjar o ranking de mais acessadas.
@@ -37,6 +39,10 @@ export function pickCifraFields(data) {
   if (Array.isArray(data?.categorias)) {
     picked.categorias = data.categorias.filter((c) => typeof c === "string");
   }
+  // Tamanhos, BPM e ids de categoria válidos (400 em vez de CastError/lixo no banco)
+  // antes de gastar CPU convertendo o texto.
+  parseOrThrow(cifraFieldsSchema, picked);
+
   // Se o texto mudou, o ChordPro guardado ficou velho: refaz (e prova) ou descarta.
   // `observacao` continua sendo a fonte da verdade.
   if (picked.observacao !== undefined) {

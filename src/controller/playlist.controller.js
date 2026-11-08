@@ -6,6 +6,8 @@ import {
   uploadToS3,
 } from "../middlewares/upload.middleware.js";
 import { sendError } from "../utils/httpError.js";
+import { parseOrThrow } from "../schemas/auth.schema.js";
+import { shareEmailsSchema } from "../schemas/playlist.schema.js";
 
 const PLAYLIST_BANNER_PREFIX = "playlists";
 
@@ -210,7 +212,7 @@ async function sharePlaylistController(req, res) {
   try {
     const result = await playlistService.sharePlaylistService(
       req.params.id,
-      req.body.emails,
+      parseOrThrow(shareEmailsSchema, req.body).emails,
       req.userId,
       req.userLevel === "ADM",
     );
@@ -224,7 +226,7 @@ async function unsharePlaylistController(req, res) {
   try {
     const result = await playlistService.unsharePlaylistService(
       req.params.id,
-      req.body.emails,
+      parseOrThrow(shareEmailsSchema, req.body).emails,
       req.userId,
       req.userLevel === "ADM",
     );

@@ -1,9 +1,9 @@
 import { Router } from "express";
-import rateLimit from "express-rate-limit";
+import { createLimiter } from "../middlewares/rateLimit.js";
 import { authMiddleware, denyNonAdm } from "../middlewares/auth.middleware.js";
 import feedbackController from "../controller/feedback.controller.js";
 
-const feedbackLimiter = rateLimit({
+const feedbackLimiter = createLimiter("feedback", {
   windowMs: 60 * 60 * 1000,
   max: 10,
   standardHeaders: true,

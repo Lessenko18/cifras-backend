@@ -1,13 +1,13 @@
 import { Router } from "express";
 import express from "express";
-import rateLimit from "express-rate-limit";
+import { createLimiter } from "../middlewares/rateLimit.js";
 
 const cspRouter = Router();
 
 // Recebe os relatórios da CSP em modo Report-Only do front. Público (o navegador
 // envia sem credenciais), então: limite de taxa, corpo pequeno e só loga campos
 // conhecidos, truncados. Vai pro log da Vercel; nada é gravado no banco.
-const cspLimiter = rateLimit({
+const cspLimiter = createLimiter("csp", {
   windowMs: 60 * 1000,
   limit: 30,
   standardHeaders: false,

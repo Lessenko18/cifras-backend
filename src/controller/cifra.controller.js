@@ -1,6 +1,8 @@
 import cifraService from "../service/cifra.service.js";
 import { logAudit, auditLabel } from "../service/audit.service.js";
 import { sendError } from "../utils/httpError.js";
+import { parseOrThrow } from "../schemas/auth.schema.js";
+import { listCifrasQuerySchema, homeInsightsQuerySchema } from "../schemas/cifra.schema.js";
 
 async function createCifraController(req, res) {
   try {
@@ -48,19 +50,9 @@ async function deleteCifraController(req, res) {
 
 async function getAllCifraController(req, res) {
   try {
-    const { nome, artista, categorias, favoritos, page, limit } = req.query;
-
-    const toArray = (val) =>
-      val ? String(val).split(",").map((s) => s.trim()).filter(Boolean) : undefined;
-
-    const result = await cifraService.getAllCifraService({
-      nome: nome ? String(nome) : undefined,
-      artista: artista ? String(artista) : undefined,
-      categorias: toArray(categorias),
-      favoritos: toArray(favoritos),
-      page: page !== undefined ? Number(page) : 0,
-      limit: limit !== undefined ? Math.min(Number(limit), 100) : 15,
-    });
+    const result = await cifraService.getAllCifraService(
+      parseOrThrow(listCifrasQuerySchema, req.query),
+    );
 
     return res.status(200).json(result);
   } catch (error) {
@@ -88,10 +80,9 @@ async function registerCifraAccessController(req, res) {
 
 async function getHomeInsightsController(req, res) {
   try {
-    const { limit } = req.query;
-    const result = await cifraService.getHomeInsightsService({
-      limit: limit !== undefined ? Math.min(Number(limit), 20) : 6,
-    });
+    const result = await cifraService.getHomeInsightsService(
+      parseOrThrow(homeInsightsQuerySchema, req.query),
+    );
     return res.status(200).json(result);
   } catch (error) {
     return sendError(res, error);

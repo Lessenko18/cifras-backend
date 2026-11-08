@@ -1,10 +1,10 @@
 import { Router } from "express";
-import rateLimit from "express-rate-limit";
+import { createLimiter } from "../middlewares/rateLimit.js";
 import * as authController from "../controller/auth.controller.js";
 import { authMiddleware } from "../middlewares/auth.middleware.js";
 import { logout } from "../controller/auth.controller.js";
 
-const loginLimiter = rateLimit({
+const loginLimiter = createLimiter("login", {
   windowMs: 15 * 60 * 1000,
   max: 10,
   standardHeaders: true,
@@ -12,7 +12,7 @@ const loginLimiter = rateLimit({
   message: { message: "Muitas tentativas de login. Tente novamente em 15 minutos." },
 });
 
-const registerLimiter = rateLimit({
+const registerLimiter = createLimiter("register", {
   windowMs: 60 * 60 * 1000,
   max: 5,
   standardHeaders: true,
@@ -20,7 +20,7 @@ const registerLimiter = rateLimit({
   message: { message: "Muitas tentativas de cadastro. Tente novamente em 1 hora." },
 });
 
-const forgotPasswordLimiter = rateLimit({
+const forgotPasswordLimiter = createLimiter("forgot", {
   windowMs: 15 * 60 * 1000,
   max: 5,
   standardHeaders: true,
@@ -28,7 +28,7 @@ const forgotPasswordLimiter = rateLimit({
   message: { message: "Muitas solicitações. Tente novamente em 15 minutos." },
 });
 
-const resetPasswordLimiter = rateLimit({
+const resetPasswordLimiter = createLimiter("reset", {
   windowMs: 15 * 60 * 1000,
   max: 10,
   standardHeaders: true,

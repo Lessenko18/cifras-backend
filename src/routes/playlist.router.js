@@ -1,13 +1,17 @@
 import { Router } from "express";
-import rateLimit from "express-rate-limit";
+import { createLimiter } from "../middlewares/rateLimit.js";
 import { authMiddleware, denyNonAdm } from "../middlewares/auth.middleware.js";
 import playlistController from "../controller/playlist.controller.js";
+import { validateIdParam } from "../schemas/common.schema.js";
 import { upload } from "../middlewares/upload.middleware.js";
 
 const playlistRouter = Router();
 
+// Todo `:id` deste router precisa ser um ObjectId (senão 400 antes do banco)
+playlistRouter.param("id", validateIdParam);
+
 // Link público (sem login): limitado por IP e declarado antes de /:id
-const publicLimiter = rateLimit({
+const publicLimiter = createLimiter("playlist-public", {
   windowMs: 60 * 1000,
   limit: 60,
   standardHeaders: false,

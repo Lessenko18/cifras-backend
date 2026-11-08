@@ -1,7 +1,7 @@
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import rateLimit from "express-rate-limit";
+import { createLimiter } from "./rateLimit.js";
 import { fileTypeFromBuffer } from "file-type";
 import multer from "multer";
 import { v4 as uuidv4 } from "uuid";
@@ -51,7 +51,7 @@ export const upload = multer({
   },
 });
 
-export const avatarUploadRateLimit = rateLimit({
+export const avatarUploadRateLimit = createLimiter("upload-avatar", {
   windowMs: 15 * 60 * 1000,
   max: 20,
   standardHeaders: true,

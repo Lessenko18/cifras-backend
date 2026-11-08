@@ -1,5 +1,5 @@
 import playlistRepositories from "../repositories/playlist.repositories.js";
-import { AppError } from "../utils/httpError.js";
+import { AppError, notFound } from "../utils/httpError.js";
 import userRepositories from "../repositories/user.repositories.js";
 import { sendMailBatch } from "./mail.service.js";
 import mongoose from "mongoose";

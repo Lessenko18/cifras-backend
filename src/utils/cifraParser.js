@@ -5,7 +5,8 @@ import { cleanCifraText } from "./cleanCifraText.js";
 const CHORD_RE =
   /^\(?[A-G][b#]?(maj|min|m|dim|aug|sus[24]?|add)?[0-9]*M?(\([0-9]+\))?(b[0-9]+|#[0-9]+)?(\/[A-G][b#]?)?[+°]?\)?$/;
 
-const SYMBOL_TOKENS = new Set(["-", "|", "||", "||:", ":||", "/"]);
+// "(" e ")" soltos aparecem em "D9  ( D4  D )" (variação opcional entre parênteses).
+const SYMBOL_TOKENS = new Set(["-", "|", "||", "||:", ":||", "/", "(", ")"]);
 
 function isChord(word) {
   return CHORD_RE.test(word);
@@ -50,7 +51,28 @@ function extractChords(chordLine) {
       i++;
     }
   }
-  return chords;
+  return glueParens(chords);
+}
+
+// "( D4 D )" → "(D4" e "D)": o parêntese solto vai para o acorde vizinho, em vez de
+// aparecer como um "acorde" sozinho.
+function glueParens(chords) {
+  const out = [];
+  let open = null;
+  for (const chord of chords) {
+    if (chord.text === "(") {
+      open = chord;
+    } else if (chord.text === ")" && out.length) {
+      out[out.length - 1].text += ")";
+    } else if (open) {
+      out.push({ text: `(${chord.text}`, pos: open.pos });
+      open = null;
+    } else {
+      out.push(chord);
+    }
+  }
+  if (open) out.push(open);
+  return out;
 }
 
 function extractWords(lyricLine) {

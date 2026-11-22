@@ -51,7 +51,7 @@ async function deleteCifraController(req, res) {
 async function getAllCifraController(req, res) {
   try {
     const result = await cifraService.getAllCifraService(
-      parseOrThrow(listCifrasQuerySchema, req.query),
+      { ...parseOrThrow(listCifrasQuerySchema, req.query), userId: req.userId },
     );
 
     return res.status(200).json(result);

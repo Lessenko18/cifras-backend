@@ -4,7 +4,13 @@ import { pickCifraFields } from "../src/service/cifra.service.js";
 
 test("só aceita os campos permitidos (contadores e autor vêm do servidor)", () => {
   const out = pickCifraFields({ nome: "A Paz", acessos: 999, createdBy: "x", $set: {} });
-  assert.deepEqual(out, { nome: "A Paz" });
+  assert.deepEqual(out, { nome: "A Paz", nomeBusca: "a paz" });
+});
+
+test("guarda nome e artista sem acento para a busca", () => {
+  const out = pickCifraFields({ nome: "Coração", artista: "João Álvaro" });
+  assert.equal(out.nomeBusca, "coracao");
+  assert.equal(out.artistaBusca, "joao alvaro");
 });
 
 test("limpa caracteres invisíveis do texto", () => {

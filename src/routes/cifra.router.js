@@ -26,7 +26,10 @@ const acessoLimiter = createLimiter("cifra-acesso", {
 cifraRouter.get("/insights/home", cifraController.getHomeInsightsController);
 cifraRouter.post("/:id/acesso", acessoLimiter, cifraController.registerCifraAccessController);
 cifraRouter.get("/:id", cifraController.getCifraByIdController);
-cifraRouter.get("/", cifraController.getAllCifraController);
+// A listagem é pública, mas "?favoritos=1" (as minhas favoritas) exige login
+const authSeFavoritos = (req, res, next) =>
+  req.query.favoritos === "1" ? authMiddleware(req, res, next) : next();
+cifraRouter.get("/", authSeFavoritos, cifraController.getAllCifraController);
 
 // Rotas protegidas (requerem autenticação)
 cifraRouter.post("/create", authMiddleware, cifraController.createCifraController);

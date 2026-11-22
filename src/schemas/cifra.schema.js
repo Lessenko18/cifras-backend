@@ -1,6 +1,9 @@
 import { z } from "zod";
 import { csvOfObjectIds, objectIdSchema, queryInt } from "./common.schema.js";
 
+// `?favoritos=1`: só as favoritas de quem está logado (o servidor busca os ids).
+export const FAVORITOS_DO_USUARIO = "me";
+
 const text = (max) => z.string().max(max, "Texto longo demais");
 
 // Query de GET /cifra. `limit` acima do teto é reduzido (compatível com o
@@ -9,7 +12,9 @@ export const listCifrasQuerySchema = z.object({
   nome: text(200).optional(),
   artista: text(200).optional(),
   categorias: csvOfObjectIds(50).optional(),
-  favoritos: csvOfObjectIds(1000).optional(),
+  favoritos: z
+    .union([z.literal("1").transform(() => FAVORITOS_DO_USUARIO), csvOfObjectIds(1000)])
+    .optional(),
   page: queryInt({ min: 0, max: 100000, fallback: 0 }),
   limit: queryInt({ min: 1, max: 100, fallback: 15, clamp: true }),
 });

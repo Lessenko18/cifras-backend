@@ -13,6 +13,16 @@ const CifraSchema = new mongoose.Schema({
     type: String,
     default: "",
   },
+  // Cópias de `nome`/`artista` em minúsculas e sem acento, só para a busca por texto
+  // (ver utils/normalizeBusca.js). Mantidas pelo service ao criar/editar.
+  nomeBusca: {
+    type: String,
+    default: "",
+  },
+  artistaBusca: {
+    type: String,
+    default: "",
+  },
   observacao: {
     type: String,
   },
@@ -60,6 +70,8 @@ const CifraSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 CifraSchema.index({ nome: "text" });
+CifraSchema.index({ nomeBusca: 1 });
+CifraSchema.index({ artistaBusca: 1 });
 CifraSchema.index({ categorias: 1 });
 CifraSchema.index({ acessos: -1 });
 CifraSchema.index({ createdAt: -1 });

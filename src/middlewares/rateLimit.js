@@ -85,6 +85,11 @@ export class MongoRateLimitStore {
 
 // Fábrica usada por todas as rotas: mesmo comportamento do rateLimit() padrão,
 // só que com contador compartilhado entre instâncias.
+//
+// RISCO ACEITO (fail-open): `passOnStoreError: true` faz a requisição passar se o MongoDB
+// falhar, então nesse caso NENHUM limite vale (inclusive o do login). Escolhido de
+// propósito: sem banco o app já está fora do ar para quase tudo, e bloquear todo mundo por
+// causa do contador seria pior. O erro é logado; reavalie se o login passar a ser alvo.
 export function createLimiter(name, options, storeOptions) {
   return rateLimit({
     passOnStoreError: true,

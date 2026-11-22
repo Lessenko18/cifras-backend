@@ -40,10 +40,22 @@ async function assertAppError(promise, status, code) {
 
 test("register: valida entrada com 400 e e-mail repetido com 409", async () => {
   mock.method(userRepository, "findUserByEmail", async () => ({ _id: VALID_ID }));
-  await assertAppError(authService.register({ name: "A", email: "a@a.com", password: "123456" }), 400);
-  await assertAppError(authService.register({ name: "Ana", email: "invalido", password: "123456" }), 400);
+  await assertAppError(authService.register({ name: "A", email: "a@a.com", password: "12345678" }), 400);
+  await assertAppError(authService.register({ name: "Ana", email: "invalido", password: "12345678" }), 400);
   await assertAppError(authService.register({ name: "Ana", email: "a@a.com", password: "123" }), 400);
-  await assertAppError(authService.register({ name: "Ana", email: "a@a.com", password: "123456" }), 409, "CONFLICT");
+  await assertAppError(authService.register({ name: "Ana", email: "a@a.com", password: "12345678" }), 409, "CONFLICT");
+});
+
+test("register: cadastro novo exige 8 caracteres (6 não basta mais)", async () => {
+  mock.method(userRepository, "findUserByEmail", async () => null);
+  await assertAppError(authService.register({ name: "Ana", email: "a@a.com", password: "1234567" }), 400);
+});
+
+test("resetPassword: contas antigas ainda podem redefinir com 6 caracteres", async () => {
+  mock.method(userRepository, "findUserByResetToken", async () => ({ _id: VALID_ID }));
+  const update = mock.method(userRepository, "updateUserRepository", async () => ({}));
+  await authService.resetPassword("abc", "123456");
+  assert.equal(update.mock.calls.length, 1);
 });
 
 test("register: cria sempre com nível USER (cliente não escolhe o papel)", async () => {
@@ -55,12 +67,12 @@ test("register: cria sempre com nível USER (cliente não escolhe o papel)", asy
   const user = await authService.register({
     name: "Ana",
     email: "ana@a.com",
-    password: "123456",
+    password: "12345678",
     level: "ADM",
   });
   assert.equal(user.level, "USER");
   assert.equal(create.mock.calls[0].arguments[0].level, "USER");
-  assert.notEqual(create.mock.calls[0].arguments[0].password, "123456");
+  assert.notEqual(create.mock.calls[0].arguments[0].password, "12345678");
 });
 
 test("login: credenciais erradas viram 401, com a mesma mensagem para e-mail inexistente", async () => {
@@ -303,7 +315,7 @@ test("POST /auth/register: e-mail repetido é 409, bug interno é 500 sem vazar 
   const server = await listen(buildApp());
   try {
     const dup = await request(server, "POST", "/auth/register", {
-      body: { name: "Ana", email: "ana@a.com", password: "123456" },
+      body: { name: "Ana", email: "ana@a.com", password: "12345678" },
     });
     assert.equal(dup.status, 409);
 
@@ -313,7 +325,7 @@ test("POST /auth/register: e-mail repetido é 409, bug interno é 500 sem vazar 
       throw new TypeError("Cannot read properties of undefined");
     });
     const bug = await request(server, "POST", "/auth/register", {
-      body: { name: "Ana", email: "ana@a.com", password: "123456" },
+      body: { name: "Ana", email: "ana@a.com", password: "12345678" },
     });
     assert.equal(bug.status, 500);
     assert.ok(!JSON.stringify(bug.body).includes("Cannot read"));

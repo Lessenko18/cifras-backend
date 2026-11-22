@@ -1,8 +1,12 @@
 import Cifra from "../models/Cifra.js";
+import { normalizeBusca } from "../utils/normalizeBusca.js";
 
 // Listagens não precisam do texto da cifra (observacao, que pode ter dezenas de
 // KB por item). Quem abre uma cifra busca por id e recebe o texto completo.
-const LIST_PROJECTION = "-observacao -chordpro -chordproHash";
+const LIST_PROJECTION = "-observacao -chordpro -chordproHash -nomeBusca -artistaBusca";
+
+// Mais palavras que isso na busca são ignoradas (evita consulta enorme)
+const MAX_TERMOS_BUSCA = 6;
 
 const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -30,11 +34,24 @@ async function getAllCifraRepository({ nome, artista, categorias, favoritos, pag
   const query = {};
 
   if (nome) {
-    const safe = escapeRegex(nome.trim());
-    query.$or = [
-      { nome: { $regex: safe, $options: "i" } },
-      { artista: { $regex: safe, $options: "i" } },
-    ];
+    // Busca sem acento/caixa e sem depender da ordem: cada palavra digitada precisa aparecer
+    // no nome ou no artista ("amor deus" acha "Deus é Amor"). Usa os campos normalizados;
+    // cifras ainda sem eles (antes de rodar scripts/migrate-busca.js) seguem achadas pelo
+    // jeito antigo, com acento.
+    const original = nome.trim().split(/\s+/).filter(Boolean).slice(0, MAX_TERMOS_BUSCA);
+    const conditions = original.map((word) => {
+      const normalized = escapeRegex(normalizeBusca(word));
+      const legacy = escapeRegex(word);
+      return {
+        $or: [
+          { nomeBusca: { $regex: normalized } },
+          { artistaBusca: { $regex: normalized } },
+          { nome: { $regex: legacy, $options: "i" } },
+          { artista: { $regex: legacy, $options: "i" } },
+        ],
+      };
+    });
+    if (conditions.length) query.$and = conditions;
   }
 
   if (artista) {

@@ -95,3 +95,30 @@ test("corpo de cifra: bpm, categorias e tamanhos são validados", () => {
   assert.throws(() => pickCifraFields({ nome: "x", observacao: "y".repeat(100_001) }), { statusCode: 400 });
   assert.equal(pickCifraFields({ nome: "x", bpm: "120", categorias: [ID] }).bpm, 120);
 });
+
+test("listagem de cifras: ?favoritos=1 vira 'só as minhas favoritas'", async () => {
+  const { listCifrasQuerySchema, FAVORITOS_DO_USUARIO } = await import("../src/schemas/cifra.schema.js");
+  assert.equal(listCifrasQuerySchema.parse({ favoritos: "1" }).favoritos, FAVORITOS_DO_USUARIO);
+  assert.equal(listCifrasQuerySchema.safeParse({ favoritos: "2" }).success, false);
+});
+
+test("busca de cifras: cada palavra vira uma condição, sem acento e sem depender da ordem", async () => {
+  const Cifra = (await import("../src/models/Cifra.js")).default;
+  let captured;
+  const chain = { select() { return this; }, collation() { return this; }, sort() { return this; }, skip() { return this; }, limit() { return this; }, lean: async () => [] };
+  mock.method(Cifra, "find", (q) => { captured = q; return chain; });
+  mock.method(Cifra, "countDocuments", async () => 0);
+
+  await cifraRepository.getAllCifraRepository({ nome: "  Coração   DEUS ", page: 0, limit: 5 });
+  assert.equal(captured.$and.length, 2);
+  const [first, second] = captured.$and.map((c) => c.$or);
+  assert.deepEqual(first[0], { nomeBusca: { $regex: "coracao" } });
+  assert.deepEqual(first[1], { artistaBusca: { $regex: "coracao" } });
+  assert.deepEqual(second[0], { nomeBusca: { $regex: "deus" } });
+  // caracteres especiais são escapados (nada de regex vinda do usuário)
+  await cifraRepository.getAllCifraRepository({ nome: "a.*(", page: 0, limit: 5 });
+  assert.equal(captured.$and[0].$or[0].nomeBusca.$regex, String.raw`a\.\*\(`);
+  // sem busca, sem condição
+  await cifraRepository.getAllCifraRepository({ page: 0, limit: 5 });
+  assert.equal(captured.$and, undefined);
+});

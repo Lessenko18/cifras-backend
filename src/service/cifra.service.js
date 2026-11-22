@@ -3,10 +3,11 @@ import { badRequest, conflict, forbidden, notFound } from "../utils/httpError.js
 import playlistRepositories from "../repositories/playlist.repositories.js";
 import favoritoRepositories from "../repositories/favorito.repositories.js";
 import { cleanText } from "../utils/cleanText.js";
+import { normalizeBusca } from "../utils/normalizeBusca.js";
 import { convertAndVerify } from "../utils/chordpro.js";
 import { hashText, withFreshChordPro } from "../utils/chordproFresh.js";
 import { parseOrThrow } from "../schemas/auth.schema.js";
-import { cifraFieldsSchema } from "../schemas/cifra.schema.js";
+import { cifraFieldsSchema, FAVORITOS_DO_USUARIO } from "../schemas/cifra.schema.js";
 
 // Só estes campos vêm do cliente. Contadores (acessos*), createdBy etc. são
 // controlados pelo servidor — senão dava pra forjar o ranking de mais acessadas.
@@ -33,6 +34,8 @@ export function pickCifraFields(data) {
     if (link) assertHttpUrl(link);
     picked.link = link;
   }
+  if (picked.nome !== undefined) picked.nomeBusca = normalizeBusca(picked.nome);
+  if (picked.artista !== undefined) picked.artistaBusca = normalizeBusca(picked.artista);
   if (data?.bpm !== undefined && data.bpm !== null && data.bpm !== "") {
     picked.bpm = Number(data.bpm);
   }
@@ -118,8 +121,15 @@ async function deleteCifraService(id, requesterContext) {
   };
 }
 
-async function getAllCifraService({ nome, artista, categorias, favoritos, page, limit } = {}) {
-  return cifraRepositories.getAllCifraRepository({ nome, artista, categorias, favoritos, page, limit });
+// `favoritos` pode ser uma lista de ids ou FAVORITOS_DO_USUARIO: nesse caso a lista vem
+// do servidor (uma URL com centenas de ids estourava o limite de tamanho).
+async function getAllCifraService({ nome, artista, categorias, favoritos, page, limit, userId } = {}) {
+  let ids = favoritos;
+  if (favoritos === FAVORITOS_DO_USUARIO) {
+    ids = userId ? await favoritoRepositories.listFavoritosRepository(userId) : [];
+    if (ids.length === 0) return { cifras: [], total: 0, pages: 0, page: page ?? 0 };
+  }
+  return cifraRepositories.getAllCifraRepository({ nome, artista, categorias, favoritos: ids, page, limit });
 }
 
 async function getCifraById(id) {

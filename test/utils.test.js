@@ -60,3 +60,11 @@ test("sendError mapeia erros do Mongoose (validação/cast e chave duplicada)", 
   assert.equal(sendError(fakeRes(), Object.assign(new Error("x"), { name: "CastError" })).statusCode, 400);
   assert.equal(sendError(fakeRes(), Object.assign(new Error("x"), { code: 11000 })).statusCode, 409);
 });
+
+// ---------- busca sem acento ----------
+import { normalizeBusca } from "../src/utils/normalizeBusca.js";
+
+test("normalizeBusca: tira acento, caixa e espaços repetidos", () => {
+  assert.equal(normalizeBusca("  Coração   do  CÉU "), "coracao do ceu");
+  assert.equal(normalizeBusca(undefined), "");
+});

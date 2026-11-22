@@ -5,6 +5,7 @@ import favoritoRepositories from "../repositories/favorito.repositories.js";
 import cifraRepositories from "../repositories/cifra.repositories.js";
 
 const MIN_PASSWORD_LENGTH = 6;
+const NEW_USER_MIN_PASSWORD_LENGTH = 8;
 
 // Só estes campos podem vir do cliente. `level` só entra quando o chamador é
 // ADM (quem chama decide via allowLevel). Nunca repassa o body inteiro ao banco.
@@ -38,10 +39,11 @@ const sameEmail = (a, b) => String(a || "").trim().toLowerCase() === String(b ||
 
 const MAX_PASSWORD_BYTES = 72; // bcrypt ignora o que passar disso
 
-function assertValidPassword(password) {
+// `min`: 6 para quem já tem conta (troca de senha); 8 para conta nova.
+function assertValidPassword(password, min = MIN_PASSWORD_LENGTH) {
   const value = String(password);
-  if (value.length < MIN_PASSWORD_LENGTH) {
-    throw badRequest(`A senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres`);
+  if (value.length < min) {
+    throw badRequest(`A senha deve ter pelo menos ${min} caracteres`);
   }
   if (Buffer.byteLength(value) > MAX_PASSWORD_BYTES) {
     throw badRequest("A senha é muito longa (máximo de 72 caracteres)");
@@ -53,7 +55,7 @@ async function createUserService(rawData) {
   const data = pickUserFields(rawData, { allowLevel: true });
   if (!data.name || !data.password || !data.email)
     throw badRequest("Preencha todas as informações");
-  assertValidPassword(data.password);
+  assertValidPassword(data.password, NEW_USER_MIN_PASSWORD_LENGTH); // conta nova (criada por ADM)
 
   const normalizedData = {
     ...data,

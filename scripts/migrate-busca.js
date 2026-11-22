@@ -4,7 +4,7 @@
 //   node scripts/migrate-busca.js           -> SIMULAÇÃO (não grava nada)
 //   node scripts/migrate-busca.js --apply   -> grava os campos
 //
-// Idempotente: só altera cifras cujo valor calculado difere do guardado.
+// Não altera `updatedAt` (os campos são só de busca). Idempotente: só altera cifras cujo valor calculado difere do guardado.
 // Até rodar, a busca continua achando essas cifras pelo jeito antigo (com acento).
 
 import "dotenv/config";
@@ -30,7 +30,7 @@ for await (const cifra of Cifra.find({}).select("nome artista nomeBusca artistaB
 
 console.log(`${total} cifras; ${ops.length} precisam de atualização.`);
 if (apply && ops.length) {
-  const result = await Cifra.bulkWrite(ops, { ordered: false });
+  const result = await Cifra.bulkWrite(ops, { ordered: false, timestamps: false }); // não mexe no updatedAt
   console.log(`Atualizadas: ${result.modifiedCount}`);
 } else if (!apply) {
   console.log("Simulação: nada foi gravado. Use --apply para gravar.");

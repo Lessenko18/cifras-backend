@@ -1,3 +1,4 @@
+import { ROLES, ROLE_VALUES } from "../policies/roles.js";
 import bcrypt from "bcryptjs";
 import { badRequest, notFound } from "../utils/httpError.js";
 import userRepositories from "../repositories/user.repositories.js";
@@ -14,7 +15,7 @@ function pickUserFields(data, { allowLevel = false } = {}) {
   for (const field of ["name", "email", "password"]) {
     if (typeof data?.[field] === "string") picked[field] = data[field];
   }
-  if (allowLevel && ["USER", "ADM"].includes(data?.level)) {
+  if (allowLevel && ROLE_VALUES.includes(data?.level)) {
     picked.level = data.level;
   }
   return picked;
@@ -59,7 +60,7 @@ async function createUserService(rawData) {
 
   const normalizedData = {
     ...data,
-    level: data.level || "USER",
+    level: data.level || ROLES.USER,
   };
 
   if (normalizedData.password) {

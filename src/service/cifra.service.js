@@ -1,3 +1,4 @@
+import { can } from "../policies/index.js";
 import cifraRepositories from "../repositories/cifra.repositories.js";
 import { badRequest, conflict, forbidden, notFound } from "../utils/httpError.js";
 import playlistRepositories from "../repositories/playlist.repositories.js";
@@ -5,7 +6,7 @@ import favoritoRepositories from "../repositories/favorito.repositories.js";
 import { cleanText } from "../utils/cleanText.js";
 import { normalizeBusca } from "../utils/normalizeBusca.js";
 import { convertAndVerify } from "../utils/chordpro.js";
-import { hashText, withFreshChordPro } from "../utils/chordproFresh.js";
+import { chordproHash, withFreshChordPro } from "../utils/chordproFresh.js";
 import { parseOrThrow } from "../schemas/auth.schema.js";
 import { cifraFieldsSchema, FAVORITOS_DO_USUARIO } from "../schemas/cifra.schema.js";
 
@@ -51,7 +52,7 @@ export function pickCifraFields(data) {
   if (picked.observacao !== undefined) {
     const converted = convertAndVerify(picked.observacao);
     picked.chordpro = converted.ok ? converted.chordpro : null;
-    picked.chordproHash = converted.ok ? hashText(picked.observacao) : null;
+    picked.chordproHash = converted.ok ? chordproHash(picked.observacao) : null;
   }
   return picked;
 }
@@ -79,15 +80,10 @@ async function updateCifraService(id, data, requesterContext) {
   const cifra = await cifraRepositories.getCifraByIdRepository(id);
   if (!cifra) throw notFound("Cifra não encontrada");
 
-  const requesterId = requesterContext?.requesterId;
-  const requesterLevel = requesterContext?.requesterLevel;
+  const actor = { userId: requesterContext?.requesterId, level: requesterContext?.requesterLevel };
 
-  if (requesterLevel !== "ADM") {
-    const createdBy = cifra.createdBy?.toString();
-
-    if (!createdBy || createdBy !== requesterId) {
-      throw forbidden("Usuário comum não pode editar cifras criadas por outros usuários");
-    }
+  if (!can("cifra:edit", actor, cifra)) {
+    throw forbidden("Usuário comum não pode editar cifras criadas por outros usuários");
   }
 
   const safeData = pickCifraFields(data);
@@ -100,15 +96,10 @@ async function deleteCifraService(id, requesterContext) {
   const cifra = await cifraRepositories.getCifraByIdRepository(id);
   if (!cifra) throw notFound("Cifra não encontrada");
 
-  const requesterId = requesterContext?.requesterId;
-  const requesterLevel = requesterContext?.requesterLevel;
+  const actor = { userId: requesterContext?.requesterId, level: requesterContext?.requesterLevel };
 
-  if (requesterLevel !== "ADM") {
-    const createdBy = cifra.createdBy?.toString();
-
-    if (!createdBy || createdBy !== requesterId) {
-      throw forbidden("Usuário comum não pode excluir cifras criadas por outros usuários");
-    }
+  if (!can("cifra:delete", actor, cifra)) {
+    throw forbidden("Usuário comum não pode excluir cifras criadas por outros usuários");
   }
 
   await playlistRepositories.removeCifraFromAllPlaylists(id);

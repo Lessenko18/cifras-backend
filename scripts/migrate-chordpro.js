@@ -18,7 +18,7 @@ import mongoose from "mongoose";
 import connectDatabase from "../src/database/database.js";
 import Cifra from "../src/models/Cifra.js";
 import { convertAndVerify } from "../src/utils/chordpro.js";
-import { hashText } from "../src/utils/chordproFresh.js";
+import { chordproHash } from "../src/utils/chordproFresh.js";
 
 const args = process.argv.slice(2);
 const apply = args.includes("--apply");
@@ -48,7 +48,7 @@ for (const c of cifras) {
     continue;
   }
   stats.convertidas++;
-  const hash = hashText(c.observacao);
+  const hash = chordproHash(c.observacao);
   if (c.chordpro === r.chordpro && c.chordproHash === hash) {
     stats.jaEstavamOk++;
     continue;

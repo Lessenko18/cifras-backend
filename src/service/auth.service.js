@@ -1,3 +1,4 @@
+import { ROLES } from "../policies/roles.js";
 import bcrypt from "bcryptjs";
 import { badRequest, conflict, unauthorized, AppError } from "../utils/httpError.js";
 import crypto from "crypto";
@@ -58,7 +59,7 @@ export async function register(input) {
     name,
     email,
     password: hashedPassword,
-    level: "USER",
+    level: ROLES.USER,
   });
 
   return {

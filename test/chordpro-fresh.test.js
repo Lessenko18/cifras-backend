@@ -1,13 +1,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { freshChordPro, hashText, withFreshChordPro } from "../src/utils/chordproFresh.js";
+import { chordproHash, freshChordPro, hashText, withFreshChordPro } from "../src/utils/chordproFresh.js";
 
 const texto = "C      G\nDeve haver um lugar";
 const cifra = (over = {}) => ({
   nome: "A Paz",
   observacao: texto,
   chordpro: "[C]Deve [G]haver um lugar",
-  chordproHash: hashText(texto),
+  chordproHash: chordproHash(texto),
   ...over,
 });
 
@@ -43,4 +43,11 @@ test("withFreshChordPro aceita documento do Mongoose (toObject)", () => {
 test("o hash muda com qualquer alteração do texto", () => {
   assert.notEqual(hashText("a"), hashText("a "));
   assert.equal(hashText("a"), hashText("a"));
+});
+
+test("ChordPro gerado por outra versão do parser deixa de valer", async () => {
+  const { CHORDPRO_VERSION } = await import("../src/utils/chordpro.js");
+  const velho = cifra({ chordproHash: hashText(`v${CHORDPRO_VERSION - 1}:Deve haver um lugar`) });
+  assert.equal(freshChordPro(velho), undefined);
+  assert.equal(freshChordPro(cifra()), "[C]Deve [G]haver um lugar");
 });

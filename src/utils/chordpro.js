@@ -11,6 +11,12 @@
 // Este arquivo é igual ao do Frontend (src/utils/chordpro.js): mantenha os dois.
 
 import { buildTokens, parseCifraText } from "./cifraParser.js";
+import { splitGluedChords } from "./chordSyntax.js";
+
+// Versão do conversor/parser. Entra no hash do ChordPro guardado no banco: ao mudar QUALQUER
+// regra de reconhecimento de acorde, some 1 aqui. Todo ChordPro gerado antes deixa de valer
+// e a API volta ao texto original até ser regerado (backend: scripts/migrate-chordpro.js).
+export const CHORDPRO_VERSION = 2;
 
 // "[Refrão]" sozinho na linha é rótulo de seção, não acorde. No ChordPro vira {comment: Refrão}.
 const SECTION_RE = /^\s*\[([^\]]{1,40})\]\s*$/;
@@ -33,8 +39,7 @@ function chordsOf(token) {
 function chordOnlyToChordPro(line) {
   return line.replace(/\S+/g, (word) => {
     if (/^[|/\-:]+$/.test(word)) return word;
-    return word
-      .split(/(?<=\/[A-G][b#]?)(?=[A-G])/)
+    return splitGluedChords(word)
       .map((c) => `[${c}]`)
       .join("");
   });

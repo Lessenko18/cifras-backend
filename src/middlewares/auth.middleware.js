@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
 import userRepository from "../repositories/user.repositories.js";
 import { allowedOrigins } from "../config/cors.js";
+import { can } from "../policies/index.js";
 
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
@@ -76,7 +77,7 @@ export const authMiddleware = async (req, res, next) => {
 
 // Middleware para bloquear usuários não ADM
 export const denyNonAdm = (req, res, next) => {
-  if (req.userLevel !== "ADM") {
+  if (!can("admin:access", { userId: req.userId, level: req.userLevel })) {
     return res
       .status(403)
       .json({ message: "Acesso permitido apenas para ADM" });

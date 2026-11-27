@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { ROLE_VALUES } from "../policies/roles.js";
 
 // Campos que nunca podem sair em respostas JSON (nem pro próprio usuário)
 const SENSITIVE_FIELDS = [
@@ -30,7 +31,7 @@ const UserSchema = new mongoose.Schema({
   },
   level: {
     type: String,
-    enum: ["USER", "ADM"],
+    enum: ROLE_VALUES,
     required: true,
   },
   avatar: {

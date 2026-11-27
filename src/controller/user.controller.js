@@ -1,3 +1,4 @@
+import { actorFromReq, can } from "../policies/index.js";
 import userService from "../service/user.service.js";
 import { logAudit, auditLabel } from "../service/audit.service.js";
 import {
@@ -41,10 +42,7 @@ async function getAllUserController(req, res) {
 }
 
 async function getUserByIdController(req, res) {
-  const isAdm = req.userLevel === "ADM";
-  const isSelf = req.userId === req.params.id;
-
-  if (!isAdm && !isSelf) {
+  if (!can("user:read", actorFromReq(req), { id: req.params.id })) {
     return res.status(403).json({
       message: "Usuário comum só pode consultar o próprio perfil",
     });
@@ -61,10 +59,9 @@ async function getUserByIdController(req, res) {
 async function updateUserController(req, res) {
   const id = req.params.id;
 
-  const isAdm = req.userLevel === "ADM";
   const isSelfUpdate = req.userId === id;
 
-  if (!isAdm && !isSelfUpdate) {
+  if (!can("user:update", actorFromReq(req), { id })) {
     return res.status(403).json({
       message: "Usuário comum só pode editar o próprio perfil",
     });
@@ -72,7 +69,7 @@ async function updateUserController(req, res) {
 
   try {
     const user = await userService.updateUserService(id, req.body, {
-      allowLevel: isAdm,
+      allowLevel: can("user:set-level", actorFromReq(req)),
       requireCurrentPassword: isSelfUpdate,
     });
     // Só os NOMES dos campos alterados (nunca senha/valores sensíveis)

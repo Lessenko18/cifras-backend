@@ -1,3 +1,4 @@
+import { isAdmin } from "../policies/index.js";
 import playlistService from "../service/playlist.service.js";
 import { logAudit, auditLabel } from "../service/audit.service.js";
 import {
@@ -81,7 +82,7 @@ async function getPlaylistViewController(req, res) {
     const playlist = await playlistService.getPlaylistViewService(
       id,
       req.userId,
-      req.userLevel === "ADM",
+      isAdmin(req),
     );
     return res.status(200).send(playlist);
   } catch (error) {
@@ -96,7 +97,7 @@ async function setPlaylistTomController(req, res) {
       String(req.body?.cifraId ?? ""),
       req.body?.semitones,
       req.userId,
-      req.userLevel === "ADM",
+      isAdmin(req),
     );
     return res.status(200).json(result);
   } catch (error) {
@@ -119,7 +120,7 @@ async function setPublicLinkController(req, res) {
       req.params.id,
       req.method === "POST",
       req.userId,
-      req.userLevel === "ADM",
+      isAdmin(req),
     );
     return res.status(200).json(result);
   } catch (error) {
@@ -144,7 +145,7 @@ async function updatePlaylistController(req, res) {
       id,
       payload,
       req.userId,
-      req.userLevel === "ADM",
+      isAdmin(req),
     );
     return res.status(200).send(await attachBannerUrl(playlist));
   } catch (error) {
@@ -159,7 +160,7 @@ async function deletePlaylistController(req, res) {
     await playlistService.deletePlaylistService(
       id,
       req.userId,
-      req.userLevel === "ADM",
+      isAdmin(req),
     );
     logAudit(req, { action: "playlist_excluida", entity: "playlist", entityId: id, label });
     return res.status(200).send({ message: "Playlist deletada com sucesso" });
@@ -172,7 +173,7 @@ async function getAllPlaylistController(req, res) {
   try {
     const playlists = await playlistService.getAllPlaylistService(
       req.userId,
-      req.userLevel === "ADM",
+      isAdmin(req),
     );
     const withBanners = await Promise.all(playlists.map(attachBannerUrl));
     return res.status(200).send(withBanners);
@@ -186,7 +187,7 @@ async function getPlaylistByIdController(req, res) {
     const playlist = await playlistService.getPlaylistById(
       req.params.id,
       req.userId,
-      req.userLevel === "ADM",
+      isAdmin(req),
     );
     const bannerUrl = await resolveBannerUrl(playlist.banner);
     return res.status(200).send({ ...playlist, bannerUrl });
@@ -200,7 +201,7 @@ async function getPlaylistSharesController(req, res) {
     const result = await playlistService.getPlaylistSharedEmailsService(
       req.params.id,
       req.userId,
-      req.userLevel === "ADM",
+      isAdmin(req),
     );
     return res.status(200).send(result);
   } catch (error) {
@@ -214,7 +215,7 @@ async function sharePlaylistController(req, res) {
       req.params.id,
       parseOrThrow(shareEmailsSchema, req.body).emails,
       req.userId,
-      req.userLevel === "ADM",
+      isAdmin(req),
     );
     return res.status(200).send(result);
   } catch (error) {
@@ -228,7 +229,7 @@ async function unsharePlaylistController(req, res) {
       req.params.id,
       parseOrThrow(shareEmailsSchema, req.body).emails,
       req.userId,
-      req.userLevel === "ADM",
+      isAdmin(req),
     );
     return res.status(200).send(result);
   } catch (error) {

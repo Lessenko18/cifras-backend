@@ -5,6 +5,7 @@ import { sendMailBatch } from "./mail.service.js";
 import mongoose from "mongoose";
 import { randomBytes } from "node:crypto";
 import { escapeHtml } from "../utils/escapeHtml.js";
+import { ROLES, can } from "../policies/index.js";
 import { freshChordPro } from "../utils/chordproFresh.js";
 
 
@@ -135,6 +136,10 @@ async function createPlaylistService(data, userId) {
   const playlist = await playlistRepositories.createPlaylistRepository(payload);
   return playlist;
 }
+// Os services de playlist ainda recebem `isAdmin` (os repositórios filtram a consulta por
+// ele); a decisão de permissão em si passa por `can()`.
+const actorOf = (userId, isAdmin) => ({ userId, level: isAdmin ? ROLES.ADM : ROLES.USER });
+
 async function getPlaylistViewService(id, userId, isAdmin = false) {
   const playlist = await playlistRepositories.getPlaylistViewRepository(
     id,
@@ -142,14 +147,15 @@ async function getPlaylistViewService(id, userId, isAdmin = false) {
     isAdmin,
   );
   if (!playlist) throw notFound("Playlist não encontrada");
+  const actor = actorOf(userId, isAdmin);
   return {
     nome: playlist.nome,
     toms: Object.fromEntries(playlist.toms || []),
     dataEvento: playlist.dataEvento || null,
     // só o dono (ou ADM) gerencia o link público
-    podeCompartilharLink: isAdmin || isSameId(playlist.criador, userId),
+    podeCompartilharLink: can("playlist:manage-link", actor, playlist),
     publicSlug:
-      isAdmin || isSameId(playlist.criador, userId) ? playlist.publicSlug || null : null,
+      can("playlist:manage-link", actor, playlist) ? playlist.publicSlug || null : null,
     musicas: (playlist.cifras || []).map((c) => ({
       id: c._id,
       nome: c.nome,
@@ -241,9 +247,7 @@ async function deletePlaylistService(id, userId, isAdmin = false) {
   }
 
   // 2. Verificamos se o usuário logado é o criador ou ADM
-  const eCriador = isSameId(playlistExistente.criador, userId);
-
-  if (!isAdmin && !eCriador) {
+  if (!can("playlist:delete", actorOf(userId, isAdmin), playlistExistente)) {
     throw createServiceError(
       "Somente o criador ou ADM pode excluir a playlist.",
       403,
